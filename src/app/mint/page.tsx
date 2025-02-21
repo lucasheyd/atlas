@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { Container } from "@/components/Container";
 import { mintNFT, getTotalSupply, getMintPrice } from '@/utils/contract';
+import Image from 'next/image';
 
 export default function MintPage() {
   const [mintAmount, setMintAmount] = useState(1);
@@ -69,11 +70,13 @@ const handleMint = async () => {
             <h2 className="text-4xl font-bold mb-4 text-gray-800 dark:text-white">
               Mint Fractal Swarm
             </h2>
-            <img 
-              src="fractal.png" 
-              alt="Fractal Swarm NFT"
-              className="rounded-xl shadow-lg max-w-[256px] w-full"
-            />
+            <Image 
+ 		 src="/fractal.png"
+ 		 alt="Fractal Swarm NFT"
+		  width={256}
+ 		 height={256}
+		  className="rounded-xl shadow-lg"
+	    />
           </div>
           
           <div className="mb-6">

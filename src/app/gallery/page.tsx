@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ethers } from 'ethers';
 import { Container } from "@/components/Container";
 import { getUserNFTs } from '@/utils/contract';
+import Image from 'next/image';
 
 export default function GalleryPage() {
   const [userTokens, setUserTokens] = useState([]);
@@ -65,11 +66,12 @@ export default function GalleryPage() {
        <div className="bg-gray-100 dark:bg-gray-800/50 rounded-lg overflow-hidden shadow-md transform transition-transform   duration-200 hover:scale-105">
          <div className="relative w-full h-0 pb-[100%] mb-3">
            {token.image && (
-            <img 
-              src={token.image} 
-              alt={token.name}
-               className="absolute inset-0 w-full h-full object-cover"
-            />
+            <Image 
+               src={token.image}
+               alt={token.name}
+               fill
+               className="object-cover"
+           />
            )}
           </div>
           <div className="p-3">
