@@ -12,7 +12,8 @@ export const Navbar = () => {
 
   const navigation = [
     { name: "Mint", href: "/mint" },
-    { name: "Gallery", href: "/gallery" }
+    { name: "Gallery", href: "/gallery" },
+    { name: "Bot", href: "/bot" }
   ];
 
   // Check wallet and network on component mount

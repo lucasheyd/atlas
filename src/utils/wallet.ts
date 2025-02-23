@@ -77,3 +77,12 @@ export async function isOnBaseNetwork() {
   }
   return false;
 }
+
+// Get provider
+export function getProvider() {
+  if (typeof window !== 'undefined' && (window as any).ethereum) {
+    return new ethers.providers.Web3Provider((window as any).ethereum);
+  }
+  // Fallback to a default provider if window.ethereum is not available
+  return new ethers.providers.JsonRpcProvider(BASE_MAINNET.rpcUrls[0]);
+}
