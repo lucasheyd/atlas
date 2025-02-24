@@ -23,7 +23,7 @@ export const NETWORKS = {
     name: 'Soneium',
     chainId: '0x74C',
     chainIdNumber: 1868,
-    rpcUrl: 'https://rpc.soneium.com',
+    rpcUrl: 'https://rpc.soneium.org/',
     currency: 'ETH',
     blockExplorer: 'https://soneium.blockscout.com',
     icon: '/icons/soneium.svg'

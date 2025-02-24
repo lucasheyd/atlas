@@ -5,14 +5,14 @@ import { Benefits } from "@/components/Benefits";
 import { Video } from "@/components/Video";
 import { Faq } from "@/components/Faq";
 import { Cta } from "@/components/Cta";
-
+import { BotHeroSection } from "@/components/BotHeroSection";
 import { benefitOne, benefitTwo } from "@/components/data";
 
 export default function Home() {
   return (
     <Container>
       <Hero />
-
+      <BotHeroSection />
 
       <SectionTitle
         preTitle="Watch a video"
