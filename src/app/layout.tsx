@@ -13,7 +13,15 @@ const inter = Inter({ subsets: ["latin"] });
 if (process.env.NODE_ENV !== 'production') {
   const consoleError = console.error;
   console.error = (...args: any[]) => {
-    if (typeof args[0] === 'string' && args[0].includes('React.Fragment')) {
+    // Suppress specific Next.js warnings
+    if (
+      typeof args[0] === 'string' && 
+      (
+        args[0].includes('React.Fragment') || 
+        args[0].includes('A param property was accessed directly') ||
+        args[0].includes('params is now a Promise')
+      )
+    ) {
       return;
     }
     consoleError(...args);

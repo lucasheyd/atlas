@@ -30,11 +30,11 @@ export const NETWORKS = {
   },
   bera: {
     name: 'Berachain',
-    chainId: '0x138DE',
+    chainId: '0x138de',  // Já está configurado para Mainnet (80094)
     chainIdNumber: 80094,
     rpcUrl: 'https://rpc.berachain.com/',
     currency: 'BERA',
-    blockExplorer: 'https://beratrail.io/',
+    blockExplorer: 'https://berascan.com/',
     icon: '/icons/bera.avif'
   },
   optimism: {
@@ -70,6 +70,18 @@ export async function switchNetwork(networkKey: NetworkKey) {
         method: 'wallet_switchEthereumChain',
         params: [{ chainId: network.chainId }],
       });
+      
+      // Aguardar um momento para que a rede seja trocada
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Verificar se a troca de rede foi bem-sucedida
+      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+      if (chainId !== network.chainId) {
+        console.warn(`Network switch to ${network.name} may not have completed correctly`);
+      } else {
+        console.log(`Successfully switched to ${network.name}`);
+      }
+      
     } catch (switchError: any) {
       // If the network isn't added yet, add it
       if (switchError.code === 4902) {
@@ -90,10 +102,22 @@ export async function switchNetwork(networkKey: NetworkKey) {
               },
             ],
           });
+          
+          // Aguardar um momento para que a rede seja adicionada
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Tentar trocar para a rede novamente após adição
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: network.chainId }],
+          });
+          
         } catch (addError) {
+          console.error(`Failed to add ${network.name} network`, addError);
           throw new Error(`Failed to add ${network.name} network`);
         }
       } else {
+        console.error(`Failed to switch to ${network.name}`, switchError);
         throw switchError;
       }
     }
