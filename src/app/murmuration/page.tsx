@@ -268,81 +268,55 @@ const handleRedeemBurned = async () => {
   if (!provider) return;
   
   if (!burnTxHash) {
-    alert('Please enter the burn transaction hash');
+    alert('Por favor, insira o hash da transação de queima');
     return;
   }
   
   setRedeemLoading(true);
-  setBurnStatus('Verifying burn transaction...');
+  setBurnStatus('Verificando transação de queima...');
   
   try {
-    // First check if token IDs are already entered manually
-    const manualTokenIds = parseTokenIds();
+    // Primeiro, verificar se as provas Merkle existem
+    const proofs = localStorage.getItem('merkleProofs');
+    if (!proofs) {
+      await loadMerkleProofs(); // Carregar caso não existam
+    }
     
-    // Fetch the tokens burned in the transaction
-    const burnResult = await fetchBurnedTokensFromTx(
-      burnTxHash,
-      manualTokenIds.length > 0 ? manualTokenIds : undefined
-    );
+    // Buscar tokens queimados automaticamente
+    const burnResult = await fetchBurnedTokensFromTx(burnTxHash);
     
     if (!burnResult.success || burnResult.tokenIds.length === 0) {
-      // If automatic retrieval failed, but we have manually entered IDs, continue with those
-      if (manualTokenIds.length > 0) {
-        setBurnStatus(`Using ${manualTokenIds.length} manually entered token IDs`);
-        
-        // Continue with redemption using manual IDs
-        const txHash = await redeemBurnedTokensWithMerkle(provider, manualTokenIds, burnTxHash);
-        
-        // Update after redemption
-        try {
-          const updatedSupply = await getMurmurationSupply(provider);
-          setSupplyInfo(updatedSupply);
-        } catch (supplyError) {
-          console.error('Error updating supply:', supplyError);
-        }
-        
-        setBurnStatus(`✅ Redemption successful! TX: ${txHash.slice(0, 10)}...`);
-        setTokenIds('');
-        setBurnTxHash('');
-        setBurnedTokens([]);
-        return;
-      }
-      
-      // Allow manual entry of token IDs
-      setBurnStatus(`⚠️ ${burnResult.message || 'Could not verify burned tokens. Please enter the token IDs manually.'}`);
+      setBurnStatus('❌ Não foi possível verificar os tokens queimados');
       setRedeemLoading(false);
       return;
     }
     
-    // Verify token count matches redemption rate
+    // Verificar se o número de tokens corresponde à taxa de resgate
     if (burnResult.tokenIds.length !== redemptionRate) {
-      setBurnStatus(`⚠️ This transaction burned ${burnResult.tokenIds.length} tokens, but ${redemptionRate} are required. Please verify.`);
+      setBurnStatus(`❌ Número incorreto de tokens. Necessário: ${redemptionRate}, Encontrados: ${burnResult.tokenIds.length}`);
       setRedeemLoading(false);
       return;
     }
     
-    // Update UI with found tokens
-    setTokenIds(burnResult.tokenIds.join(', '));
-    setBurnStatus(`✅ Verified: ${burnResult.tokenIds.length} tokens burned. Starting redemption...`);
+    // Executar resgate com Merkle proof
+    const txHash = await redeemBurnedTokensWithMerkle(
+      provider, 
+      burnResult.tokenIds, 
+      burnTxHash
+    );
     
-    // Execute redemption
-    const txHash = await redeemBurnedTokensWithMerkle(provider, burnResult.tokenIds, burnTxHash);
+    // Atualizar informações de suprimento
+    const updatedSupply = await getMurmurationSupply(provider);
+    setSupplyInfo(updatedSupply);
     
-    // Update UI after redemption
-    try {
-      const updatedSupply = await getMurmurationSupply(provider);
-      setSupplyInfo(updatedSupply);
-    } catch (supplyError) {
-      console.error('Error updating supply:', supplyError);
-    }
+    setBurnStatus(`✅ Resgate bem-sucedido! TX: ${txHash.slice(0, 10)}...`);
     
-    setBurnStatus(`✅ Redemption successful! TX: ${txHash.slice(0, 10)}...`);
+    // Limpar campos
     setTokenIds('');
     setBurnTxHash('');
-    setBurnedTokens([]);
   } catch (error) {
-    console.error('Redemption error:', error);
-    setBurnStatus(`❌ Error: ${error.message || 'Failed to redeem tokens'}`);
+    console.error('Erro no resgate:', error);
+    setBurnStatus(`❌ Erro: ${error.message || 'Falha no resgate'}`);
   } finally {
     setRedeemLoading(false);
   }
@@ -610,22 +584,18 @@ const handleRedeemBurned = async () => {
                         
                         <div className="space-y-4">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Burned Token IDs (comma-separated)
-                            </label>
-                            <textarea
-                              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
-                              rows={3}
-                              placeholder={`Enter ${redemptionRate} token IDs that you've burned`}
-                              value={tokenIds}
-                              onChange={(e) => setTokenIds(e.target.value)}
-                            />
-                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                              Selected: {parseTokenIds().length} / {redemptionRate} tokens
-                            </p>
+                    
+<button 
+  onClick={handleRedeemBurned} 
+  disabled={redeemLoading || !burnTxHash}
+  className="w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50"
+>
+  {redeemLoading 
+    ? 'Processing...' 
+    : `Redeem NFT`}
+</button>       
                           </div>
-                          
-                          
+        
                           
                           <p className="text-center text-gray-500 dark:text-gray-400 text-xs">
                             Note: You must have already burned your Fractal tokens on Base network.

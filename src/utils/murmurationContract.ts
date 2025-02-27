@@ -253,63 +253,65 @@ export const redeemBurnedTokensWithMerkle = async (
   burnTxHash: string
 ): Promise<string> => {
   try {
-    // Skip network switching and directly get the contract
-    // Get signer directly without calling getMurmurationContract
-    await provider.send('eth_requestAccounts', []);
-    const signer = provider.getSigner();
-    const contract = new ethers.Contract(MURMURATION_CONTRACT_ADDRESS, MURMURATION_ABI, signer);
+    // Obter o contrato
+    const contract = await getMurmurationContract(provider);
     
-    // Get redemption rate
+    // Obter taxa de resgate
     const redemptionRate = await contract.redemptionRate();
     
-    // Verify correct number of tokens
+    // Verificar número correto de tokens
     if (burnedTokenIds.length !== redemptionRate.toNumber()) {
       throw new Error(`Redemption requires exactly ${redemptionRate.toNumber()} tokens`);
     }
     
-    // Get user address
+    // Obter endereço do usuário
+    const signer = provider.getSigner();
     const userAddress = await signer.getAddress();
     
-    console.log(`[REDEEM] Starting redemption for ${burnedTokenIds.length} tokens on Berachain`);
-    console.log(`[REDEEM] User address: ${userAddress}`);
-    
-    // Get proofs from localStorage
-    const proofsString = localStorage.getItem('merkleProofs');
+    // Obter provas do localStorage ou tentar carregar novamente
+    let proofsString = localStorage.getItem('merkleProofs');
     if (!proofsString) {
-      throw new Error("Merkle proofs not found. Please contact support.");
+      console.log('[MERKLE] Provas não encontradas no localStorage, tentando carregar...');
+      await loadMerkleProofs();
+      proofsString = localStorage.getItem('merkleProofs');
+    }
+    
+    if (!proofsString) {
+      throw new Error("Merkle proofs not found. Please reload the page or contact support.");
     }
     
     const proofs = JSON.parse(proofsString);
-    const sortedTokenIds = [...burnedTokenIds].sort((a, b) => a - b);
-    const key = `${userAddress.toLowerCase()}_${sortedTokenIds.join('_')}`;
+
     
-    if (!proofs[key]) {
-      throw new Error("Merkle proof not found for your tokens. Make sure you've burned these tokens.");
+     // Ordenar os burnedTokenIds antes de gerar a chave da prova
+    const sortedTokenIds = [...burnedTokenIds].sort((a, b) => a - b);
+    const proofKey = `${userAddress.toLowerCase()}_${sortedTokenIds.join('_')}`;
+    
+    const merkleProof = proofs[proofKey];
+    
+    if (!merkleProof) {
+      console.error('[MERKLE] Chave tentada:', proofKey);
+      console.error('[MERKLE] Chaves disponíveis:', Object.keys(proofs));
+      throw new Error("No Merkle proof found for these tokens. Verify burn details.");
     }
     
-    const merkleProof = proofs[key];
-    console.log(`[REDEEM] Found Merkle proof for your tokens`);
-    
-    // Execute redemption
-    console.log(`[REDEEM] Sending crossChainRedeem transaction...`);
+    // Executar resgate com os IDs dos tokens ordenados
     const tx = await contract.crossChainRedeem(
       merkleProof,
-      burnedTokenIds,
+      sortedTokenIds,
       userAddress
     );
     
     await tx.wait();
-    console.log(`[REDEEM] Redemption successful. Hash: ${tx.hash}`);
-    
-    // Mark as redeemed
-    await markBurnAsRedeemedSimplified(userAddress, burnTxHash);
     
     return tx.hash;
   } catch (error: any) {
-    console.error('Error redeeming burned tokens:', error);
-    throw new Error(error.message || 'Failed to redeem tokens');
+    console.error('Erro no resgate:', error);
+    throw new Error(error.message || 'Falha no resgate de tokens');
   }
 };
+
+
 
 // Efficient bulk token transfer
 export const burnTokensEfficiently = async (
@@ -961,16 +963,20 @@ export const loadMerkleProofs = async () => {
     console.log('[MERKLE] Carregando provas Merkle...');
     
     // Primeiro, verificar se há informações de atualização
-    const updateInfoResponse = await fetch('/merkle-update-info.json');
-    if (updateInfoResponse.ok) {
-      const updateInfo = await updateInfoResponse.json();
-      console.log(`[MERKLE] Última atualização: ${updateInfo.lastUpdated}`);
-      console.log(`[MERKLE] Merkle Root: ${updateInfo.merkleRoot}`);
-      console.log(`[MERKLE] Total de provas: ${updateInfo.proofCount}`);
+    try {
+      const updateInfoResponse = await fetch('/merkle-update-info.json');
+      if (updateInfoResponse.ok) {
+        const updateInfo = await updateInfoResponse.json();
+        console.log(`[MERKLE] Última atualização: ${updateInfo.lastUpdated}`);
+        console.log(`[MERKLE] Merkle Root: ${updateInfo.merkleRoot}`);
+        console.log(`[MERKLE] Total de provas: ${updateInfo.proofCount}`);
+      }
+    } catch (infoError) {
+      console.warn('[MERKLE] Erro ao carregar informações de atualização:', infoError);
     }
     
     // Carregar o arquivo de provas
-    const proofsResponse = await fetch('/merkle-proofs.json');
+    const proofsResponse = await fetch('/public/merkle-proofs.json');
     
     if (!proofsResponse.ok) {
       throw new Error(`Falha ao carregar provas: ${proofsResponse.status}`);
@@ -989,7 +995,6 @@ export const loadMerkleProofs = async () => {
     return false;
   }
 };
-
 export const checkMerkleProofsExist = () => {
   const proofs = localStorage.getItem('merkleProofs');
   if (!proofs) {

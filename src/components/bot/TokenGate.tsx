@@ -17,7 +17,7 @@ const TokenGate = ({ children }: TokenGateProps) => {
   const [hasAccess, setHasAccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userBalance, setUserBalance] = useState(0);
-  const requiredBalance = 50;
+  const requiredBalance = 25;
 
   useEffect(() => {
     const checkTokenBalance = async () => {
