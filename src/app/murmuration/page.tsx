@@ -413,23 +413,23 @@ const handleRedeemBurned = async () => {
           </div>
           
           {/* Tabs for different mint options */}
-          <Tab.Group>
-            <Tab.List className="flex rounded-xl bg-gray-200 dark:bg-gray-700 p-1 mb-6">
-              <Tab className={({ selected }) => `w-full rounded-lg py-2 text-sm font-medium leading-5 
-                ${selected 
-                  ? 'bg-indigo-600 text-white shadow' 
-                  : 'text-gray-700 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-              >
-                Mint
-              </Tab>
-              <Tab className={({ selected }) => `w-full rounded-lg py-2 text-sm font-medium leading-5 
-                ${selected 
-                  ? 'bg-indigo-600 text-white shadow' 
-                  : 'text-gray-700 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-              >
-                Redeem Burned Tokens
-              </Tab>
-            </Tab.List>
+           <Tab.Group>
+  {/*           <Tab.List className="flex rounded-xl bg-gray-200 dark:bg-gray-700 p-1 mb-6">                 */}
+  {/*             <Tab className={({ selected }) => `w-full rounded-lg py-2 text-sm font-medium leading-5     */}
+ {/*                ${selected      */} 
+  {/*                 ? 'bg-indigo-600 text-white shadow' */}
+  {/*                 : 'text-gray-700 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'}`}     */} 
+   {/*            >  */}
+   {/*              Mint */}
+ {/*              </Tab>   */}
+ {/*              <Tab className={({ selected }) => `w-full rounded-lg py-2 text-sm font-medium leading-5  */}
+ {/*               ${selected  */}
+ {/*                 ? 'bg-indigo-600 text-white shadow'  */}
+  {/*                : 'text-gray-700 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'}`} */}
+ {/*             > */}
+  {/*              Redeem Burned Tokens */}
+{/*              </Tab> */} 
+{/*            </Tab.List> */}
             
             <Tab.Panels>
               {/* Mint Tab */}

@@ -976,7 +976,7 @@ export const loadMerkleProofs = async () => {
     }
     
     // Carregar o arquivo de provas
-    const proofsResponse = await fetch('/public/merkle-proofs.json');
+    const proofsResponse = await fetch('/merkle-proofs.json');
     
     if (!proofsResponse.ok) {
       throw new Error(`Falha ao carregar provas: ${proofsResponse.status}`);

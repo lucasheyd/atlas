@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { connectWallet, getProvider } from '@/utils/wallet';
 
+
 interface TokenGateProps {
   children: React.ReactNode;
 }
@@ -25,7 +26,7 @@ const TokenGate = ({ children }: TokenGateProps) => {
         await connectWallet();
         const provider = getProvider();
         const signer = provider.getSigner();
-        const tokenAddress = '0xcfc07303a4e916663259c3283a191b3c92a4af2c';
+        const tokenAddress = '0xcfc07303a4e916663259c3283A191B3c92a4af2C';
         const tokenContract = new ethers.Contract(
           tokenAddress,
           ['function balanceOf(address) view returns (uint256)'],

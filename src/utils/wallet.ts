@@ -71,6 +71,14 @@ export const connectWallet = async (): Promise<string> => {
   }
 };
 
+// Get provider
+export const getProvider = (): ethers.providers.Web3Provider | null => {
+  if (typeof window !== 'undefined' && window.ethereum) {
+    return new ethers.providers.Web3Provider(window.ethereum);
+  }
+  return null;
+};
+
 // Check if on Base network
 export const isOnBaseNetwork = async (): Promise<boolean> => {
   try {
