@@ -9,22 +9,26 @@ import { Web3ProviderWrapper } from "@/components/Web3Provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
-// Disable error overlay during development
-if (process.env.NODE_ENV !== 'production') {
-  const consoleError = console.error;
+// Improved error handling
+if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  const originalConsoleError = console.error;
   console.error = (...args: any[]) => {
-    // Suppress specific Next.js warnings
-    if (
-      typeof args[0] === 'string' && 
-      (
-        args[0].includes('React.Fragment') || 
-        args[0].includes('A param property was accessed directly') ||
-        args[0].includes('params is now a Promise')
+    // Filter out specific warnings
+    const suppressedWarnings = [
+      'React.Fragment',
+      'A param property was accessed directly',
+      'params is now a Promise'
+    ];
+
+    const shouldSuppress = suppressedWarnings.some(warning => 
+      args.some(arg => 
+        typeof arg === 'string' && arg.includes(warning)
       )
-    ) {
-      return;
+    );
+
+    if (!shouldSuppress) {
+      originalConsoleError(...args);
     }
-    consoleError(...args);
   };
 }
 

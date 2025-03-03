@@ -12,11 +12,12 @@ export const Navbar = () => {
   const [networkColor, setNetworkColor] = useState('bg-gray-600');
 
   const navigation = [
-    { name: "Mint Fractal", href: "/mint" },
-    { name: "Murmuration 666", href: "/murmuration" },
-    { name: "Gallery", href: "/gallery" },
-    { name: "Bot", href: "/bot" }
-  ];
+  { name: "Fractal Swarm", href: "/mint" },
+  { name: "Fractal Tree", href: "/fractal-generator" },
+  { name: "Murmuration 666", href: "/murmuration" },
+  { name: "Gallery", href: "/gallery" },
+  { name: "Bot", href: "/bot" }
+];
 
   // Check wallet and network on component mount
   useEffect(() => {
