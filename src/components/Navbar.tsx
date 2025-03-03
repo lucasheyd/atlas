@@ -23,7 +23,7 @@ export const Navbar = () => {
   useEffect(() => {
     const checkWalletAndNetwork = async () => {
       try {
-        // Verificar se a carteira já está conectada
+        // Check if wallet is already connected
         if (typeof window !== 'undefined' && window.ethereum) {
           const accounts = await window.ethereum.request({ method: 'eth_accounts' });
           if (accounts.length > 0) {
@@ -31,10 +31,10 @@ export const Navbar = () => {
           }
         }
 
-        // Obter a rede atual
+        // Get current network
         await checkCurrentNetwork();
         
-        // Adicionar listener para mudança de rede
+        // Add listener for network change
         if (typeof window !== 'undefined' && window.ethereum) {
           window.ethereum.on('chainChanged', () => {
             checkCurrentNetwork();
@@ -63,22 +63,32 @@ export const Navbar = () => {
     };
   }, []);
 
-  // Verificar a rede atual
+  // Check current network
   const checkCurrentNetwork = async () => {
     if (typeof window !== 'undefined' && window.ethereum) {
       try {
         const chainId = await window.ethereum.request({ method: 'eth_chainId' });
         
-        if (chainId === '0x2105' || chainId === '0x14a34') { // Base Mainnet (8453) ou Base Sepolia (84532)
+        // Normalize chainId to lowercase for case-insensitive comparison
+        const normalizedChainId = chainId.toLowerCase();
+        
+        // Check for Base network (Mainnet or Sepolia)
+        if (normalizedChainId === '0x2105' || normalizedChainId === '0x14a34') {
           setCurrentNetwork('Base');
           setNetworkColor('bg-blue-600');
-        } else if (chainId === '0x138DE' || chainId === '0x13985') { // Bera (80094) ou Bera Testnet (80085)
+        } 
+        // Check for Bera network (Mainnet or Testnet)
+        else if (normalizedChainId === '0x138de' || normalizedChainId === '0x13985') {
           setCurrentNetwork('Bera');
           setNetworkColor('bg-green-600');
-        } else {
+        } 
+        // Unknown network
+        else {
           setCurrentNetwork('Unknown');
           setNetworkColor('bg-gray-600');
         }
+        
+        console.log('Current network detected:', currentNetwork, 'Chain ID:', chainId);
       } catch (error) {
         console.error('Error checking chain ID', error);
         setCurrentNetwork('Error');
@@ -118,7 +128,7 @@ export const Navbar = () => {
     }
   };
 
-  // Renderizar os botões de rede
+  // Render network buttons
   const renderNetworkButtons = () => {
     if (!walletAddress) return null;
     
@@ -126,13 +136,21 @@ export const Navbar = () => {
       <div className="flex space-x-2">
         <button 
           onClick={handleSwitchToBase}
-          className={`px-4 py-1 text-xs text-white rounded-full ${currentNetwork === 'Base' ? 'bg-blue-600' : 'bg-gray-600 hover:bg-blue-500'}`}
+          className={`px-4 py-1 text-xs text-white rounded-full ${
+            currentNetwork === 'Base' 
+              ? 'bg-blue-600' 
+              : 'bg-gray-600 hover:bg-blue-500'
+          }`}
         >
           Base
         </button>
         <button 
           onClick={handleSwitchToBera}
-          className={`px-4 py-1 text-xs text-white rounded-full ${currentNetwork === 'Bera' ? 'bg-green-600' : 'bg-gray-600 hover:bg-green-500'}`}
+          className={`px-4 py-1 text-xs text-white rounded-full ${
+            currentNetwork === 'Bera' 
+              ? 'bg-green-600' 
+              : 'bg-gray-600 hover:bg-green-500'
+          }`}
         >
           Bera
         </button>
