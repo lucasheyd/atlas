@@ -3,40 +3,44 @@
 import React, { useState, useEffect } from 'react';
 import { Container } from "@/components/Container";
 import Image from 'next/image';
-import MurmurationPage from '@/components/MurmurationPage'; // Importar diretamente
+import MurmurationPage from '@/components/MurmurationPage';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 export default function MurmurationPageGuard() {
   const [isClient, setIsClient] = useState(false);
   const [isError, setIsError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [loadingStep, setLoadingStep] = useState('initializing');
+  const [hasEthereum, setHasEthereum] = useState(false);
   
-  // Detecta se estamos no ambiente cliente
+  // Check if we're in client environment
   useEffect(() => {
     try {
-      // Marcar que estamos no cliente
+      // Mark that we're on the client
       setIsClient(true);
       setLoadingStep('client-detected');
       
-      // Verificar se window existe
+      // Check if window exists
       if (typeof window !== 'undefined') {
         setLoadingStep('window-exists');
         
-        // Verificar se ethereum existe
+        // Check if ethereum exists, but don't throw an error if it doesn't
         if (window.ethereum) {
+          setHasEthereum(true);
           setLoadingStep('ethereum-exists');
         } else {
+          setHasEthereum(false);
           setLoadingStep('no-ethereum');
         }
       }
     } catch (err) {
-      console.error("Erro na inicialização:", err);
+      console.error("Error during initialization:", err);
       setIsError(true);
-      setErrorMessage(err instanceof Error ? err.message : 'Erro desconhecido na inicialização');
+      setErrorMessage(err instanceof Error ? err.message : 'Unknown initialization error');
     }
   }, []);
 
-  // Mostra um placeholder enquanto o componente não está carregado no cliente
+  // Show a placeholder while the component is not loaded on the client
   if (!isClient) {
     return (
       <Container>
@@ -63,7 +67,7 @@ export default function MurmurationPageGuard() {
               Loading Web3 components... Status: {loadingStep}
             </div>
             
-            {/* Spinner de carregamento */}
+            {/* Loading spinner */}
             <div className="flex justify-center">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500"></div>
             </div>
@@ -73,21 +77,21 @@ export default function MurmurationPageGuard() {
     );
   }
 
-  // Se houve erro no carregamento
+  // If there was an error during loading
   if (isError) {
     return (
       <Container>
         <div className="max-w-lg w-full mx-auto px-4 text-center">
           <div className="bg-red-100 dark:bg-red-900/30 p-6 rounded-lg border border-red-200 dark:border-red-800/50">
             <h2 className="text-xl font-semibold text-red-700 dark:text-red-300 mb-2">
-              Ops! Tivemos um problema
+              Oops! We encountered a problem
             </h2>
             <p className="text-red-600 dark:text-red-400 mb-4">
-              Houve um erro ao carregar os componentes Web3. Por favor, tente novamente mais tarde ou entre em contato com o suporte.
+              There was an error loading the Web3 components. Please try again later or contact support.
             </p>
             <div className="text-sm text-left p-3 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800/30 overflow-auto">
-              <p>Detalhes: {errorMessage}</p>
-              <p>Etapa de carregamento: {loadingStep}</p>
+              <p>Details: {errorMessage}</p>
+              <p>Loading step: {loadingStep}</p>
             </div>
           </div>
         </div>
@@ -95,17 +99,17 @@ export default function MurmurationPageGuard() {
     );
   }
 
-  // Verificação específica para Ethereum
+  // Specific check for Ethereum
   if (loadingStep === 'no-ethereum') {
     return (
       <Container>
         <div className="max-w-lg w-full mx-auto px-4 text-center">
           <div className="bg-yellow-100 dark:bg-yellow-900/30 p-6 rounded-lg border border-yellow-200 dark:border-yellow-800/50">
             <h2 className="text-xl font-semibold text-yellow-700 dark:text-yellow-300 mb-2">
-              Carteira não detectada
+              Wallet Not Detected
             </h2>
             <p className="text-yellow-600 dark:text-yellow-400 mb-4">
-              Para interagir com esta página, você precisa de uma carteira de criptomoedas como MetaMask.
+              To interact with this page, you need a cryptocurrency wallet like MetaMask.
             </p>
             <div className="text-sm mb-4">
               <a 
@@ -114,7 +118,7 @@ export default function MurmurationPageGuard() {
                 rel="noopener noreferrer"
                 className="text-indigo-600 dark:text-indigo-400 underline hover:text-indigo-800 dark:hover:text-indigo-300"
               >
-                Instalar MetaMask
+                Install MetaMask
               </a>
             </div>
             <Image 
@@ -130,6 +134,10 @@ export default function MurmurationPageGuard() {
     );
   }
 
-  // Renderiza o componente real quando estiver pronto
-  return <MurmurationPage />;
+  // Render the actual component when ready, wrapped in ErrorBoundary
+  return (
+    <ErrorBoundary>
+      <MurmurationPage />
+    </ErrorBoundary>
+  );
 }
