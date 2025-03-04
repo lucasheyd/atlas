@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { ethers } from 'ethers';
 import { Container } from "@/components/Container";
 import Image from 'next/image';
@@ -19,6 +20,7 @@ import {
   getRedemptionRate,
   fetchBurnedTokensFromTx
 } from '@/utils/murmurationContract';
+
 
 export default function MurmurationPage() {
   // States for mint
