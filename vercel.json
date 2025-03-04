@@ -1,9 +1,6 @@
 {
-  "buildCommand": "next build",
+  "buildCommand": "npm install && next build",
   "outputDirectory": ".next",
   "framework": "nextjs",
-  "regions": ["iad1"],
-  "env": {
-    "NEXT_PUBLIC_RUNTIME_ENV": "production"
-  }
+  "regions": ["iad1"]
 }

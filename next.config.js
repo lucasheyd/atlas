@@ -39,13 +39,8 @@ const nextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: true,
-  },
-  // Isso é extremamente importante para evitar pré-renderização da página
-  // que está causando problemas no servidor
-  experimental: {
-    // Esta configuração ajuda com problemas de hidrataçao
-    optimizeCss: true,
   }
+  // Removido o experimental.optimizeCss que estava causando o erro com critters
 };
 
 module.exports = nextConfig;
