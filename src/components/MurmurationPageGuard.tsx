@@ -53,7 +53,7 @@ export default function MurmurationPageGuard() {
             </div>
             
             <div className="mb-6 text-gray-700 dark:text-gray-300">
-              Carregando componentes Web3...
+              Loading Web3 components...
             </div>
             
             {/* Spinner de carregamento */}
