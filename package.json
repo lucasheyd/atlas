@@ -35,6 +35,7 @@
     "axios": "^1.8.1",
     "buffer": "^6.0.3",
     "clsx": "^2.1.1",
+    "critters": "^0.0.20",
     "crypto-browserify": "^3.12.1",
     "ethers": "^5.7.2",
     "eventemitter3": "^5.0.1",

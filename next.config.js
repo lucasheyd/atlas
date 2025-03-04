@@ -39,8 +39,11 @@ const nextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  // Re-enabling experimental CSS optimization (make sure critters is installed)
+  experimental: {
+    optimizeCss: true
   }
-  // Removido o experimental.optimizeCss que estava causando o erro com critters
 };
 
 module.exports = nextConfig;
