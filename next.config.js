@@ -2,14 +2,14 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     remotePatterns: [
       {
         protocol: 'https',
         hostname: '**',
       },
     ],
+    unoptimized: true, // Isso desativa a otimização de imagens, permitindo qualquer fonte
+    // Esta opção resolve o problema do IPFS, mas você perde a otimização de imagens do Next.js
   },
   // Configuração específica para solucionar problemas de build com ethers.js
   webpack: (config, { isServer }) => {
@@ -39,17 +39,8 @@ const nextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: true,
-  },
-  // Completely removing experimental options to avoid the critters error
-  // experimental: {
-  //   optimizeCss: true
-  // }
-  
-  // Add this to catch more detailed module resolution errors
-  onDemandEntries: {
-    // period (in ms) where the server will keep pages in the buffer
-    maxInactiveAge: 25 * 1000,
-    // number of pages that should be kept simultaneously without being disposed
-    pagesBufferLength: 2,
   }
-}
+  // Removido o experimental.optimizeCss que estava causando o erro com critters
+};
+
+module.exports = nextConfig;
