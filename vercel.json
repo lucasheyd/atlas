@@ -1,7 +1,9 @@
 {
-  "version": 2,
-  "buildCommand": "yarn build",
-  "installCommand": "yarn install",
+  "buildCommand": "next build",
+  "outputDirectory": ".next",
   "framework": "nextjs",
-  "outputDirectory": ".next"
-} 
+  "regions": ["iad1"],
+  "env": {
+    "NEXT_PUBLIC_RUNTIME_ENV": "production"
+  }
+}

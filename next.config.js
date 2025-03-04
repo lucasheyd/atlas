@@ -11,20 +11,41 @@ const nextConfig = {
       },
     ],
   },
-  webpack: (config) => {
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-      net: false,
-      tls: false
-    };
+  // Configuração específica para solucionar problemas de build com ethers.js
+  webpack: (config, { isServer }) => {
+    // Se estiver executando no servidor, ignoramos completamente os módulos que causam problemas
+    if (isServer) {
+      // Ignore pacotes que usam APIs específicas do navegador
+      config.externals = [...config.externals, 
+        'ethers',
+        'merkletreejs',
+        'keccak256'
+      ];
+    } else {
+      // No cliente, fornecemos fallbacks 
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false
+      };
+    }
+    
     return config;
   },
+  // Configurações para ignorar erros no build
   typescript: {
     ignoreBuildErrors: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  // Isso é extremamente importante para evitar pré-renderização da página
+  // que está causando problemas no servidor
+  experimental: {
+    // Esta configuração ajuda com problemas de hidrataçao
+    optimizeCss: true,
   }
 };
+
 module.exports = nextConfig;
