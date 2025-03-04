@@ -1,6 +1,7 @@
 {
-  "buildCommand": "npm install && next build",
+  "buildCommand": "npm install --production=false && npm run build",
   "outputDirectory": ".next",
+  "installCommand": "npm install --production=false",
   "framework": "nextjs",
-  "regions": ["iad1"]
+  "devCommand": "npm run dev"
 }
