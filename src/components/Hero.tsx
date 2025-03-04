@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Container } from "@/components/Container";
-import heroImg from "../../public/Fractal2.png";
+import heroImg from "public/Fractal2.png";
 import { Button } from "@/components/ui/button";
 
 export const Hero = () => {

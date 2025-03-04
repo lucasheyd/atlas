@@ -1,8 +1,13 @@
 "use client";
 import { useState } from "react";
-import { Container } from "@/components/Container";
 
-export function Video({ videoId, videoPath, title }) {
+interface VideoProps {
+  videoId?: string;
+  videoPath?: string;
+  title?: string;
+}
+
+export function Video({ videoId, videoPath, title }: VideoProps) {
   const [playVideo, setPlayVideo] = useState(false);
 
   // Determina se é um vídeo do YouTube ou local

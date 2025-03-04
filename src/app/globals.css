@@ -131,6 +131,26 @@
   outline-color: #6366f1;
 }
 
+.canvas-container:-webkit-full-screen {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.canvas-container:-moz-full-screen {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.canvas-container:-ms-fullscreen {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.canvas-container:fullscreen {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 @layer base {
   html,
   body {

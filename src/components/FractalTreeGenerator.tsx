@@ -481,6 +481,65 @@ const FractalTreeGenerator = () => {
   const canvasRef = useRef(null);
   const [tokenId, setTokenId] = useState('FT-129873');
   const [complexityScore, setComplexityScore] = useState('78.5%');
+const [isFullScreen, setIsFullScreen] = useState(false);
+
+const toggleFullScreen = useCallback(() => {
+  try {
+    const canvas = canvasRef.current;
+    const container = canvas?.closest('.canvas-container');
+
+    if (!document.fullscreenElement) {
+      if (container?.requestFullscreen) {
+        container.requestFullscreen();
+        setIsFullScreen(true);
+      } else if ((container as any)?.mozRequestFullScreen) { // Firefox
+        (container as any).mozRequestFullScreen();
+        setIsFullScreen(true);
+      } else if ((container as any)?.webkitRequestFullscreen) { // Chrome, Safari and Opera
+        (container as any)?.webkitRequestFullscreen();
+        setIsFullScreen(true);
+      } else if ((container as any)?.msRequestFullscreen) { // IE/Edge
+        (container as any)?.msRequestFullscreen();
+        setIsFullScreen(true);
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+        setIsFullScreen(false);
+      } else if ((document as any).mozCancelFullScreen) { // Firefox
+        (document as any).mozCancelFullScreen();
+        setIsFullScreen(false);
+      } else if ((document as any).webkitExitFullscreen) { // Chrome, Safari and Opera
+        (document as any).webkitExitFullscreen();
+        setIsFullScreen(false);
+      } else if ((document as any).msExitFullscreen) { // IE/Edge
+        (document as any).msExitFullscreen();
+        setIsFullScreen(false);
+      }
+    }
+  } catch (error) {
+    console.error('Fullscreen toggle error:', error);
+  }
+}, []);
+
+// Adicionar listener de eventos de fullscreen
+useEffect(() => {
+  const handleFullscreenChange = () => {
+    setIsFullScreen(!!document.fullscreenElement);
+  };
+
+  document.addEventListener('fullscreenchange', handleFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+  document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+  document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+  return () => {
+    document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+  };
+}, []);
   
   // State para todos os parâmetros
   const [params, setParams] = useState({
@@ -526,6 +585,9 @@ const FractalTreeGenerator = () => {
   const animationRef = useRef<number | null>(null);
   const fractalTreeRef = useRef<any>(null);
   const randomSeedRef = useRef<number>(0);
+
+
+
 
 
 const captureTreeImage = async () => {
@@ -1512,10 +1574,26 @@ const captureTreeImage = async () => {
           <span>Complexity Score: <span>{complexityScore}</span></span>
         </div>
       </div>
-      
-      <div className="relative w-full aspect-square bg-black rounded-lg overflow-hidden shadow-2xl mb-6">
-        <canvas id="treeCanvas" ref={canvasRef} className="w-full h-full"></canvas>
-      </div>
+   <div className="relative w-full aspect-square bg-black rounded-lg overflow-hidden shadow-2xl mb-6 canvas-container">
+  <canvas id="treeCanvas" ref={canvasRef} className="w-full h-full"></canvas>
+  
+  {/* Botão de tela cheia */}
+  <button 
+    onClick={toggleFullScreen}
+    className="absolute top-2 right-2 z-10 bg-emerald-500 bg-opacity-50 hover:bg-opacity-70 p-2 rounded-full text-white transition-all"
+    title={isFullScreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+  >
+    {isFullScreen ? (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    ) : (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+      </svg>
+    )}
+  </button>
+</div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Tree Structure Controls */}
