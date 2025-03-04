@@ -421,6 +421,13 @@ export default function MintPage() {
                 Visit Gallery →
               </button>
             </Link>
+           <div className="text-gray-600 dark:text-gray-300 mb-4">
+           <Link href="https://opensea.io/collection/fractalswarmnft">
+              <button className="text-indigo-600 dark:text-indigo-400 hover:underline">
+                Opensea →
+              </button>
+            </Link>
+           </div> 
           </div>
           
           <div className="bg-white dark:bg-gray-800/50 p-6 rounded-xl shadow">

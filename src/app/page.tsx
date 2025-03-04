@@ -141,6 +141,7 @@ export default function Home() {
                   Witness the breathtaking beauty of simulated flocking behaviors in our 
                   exclusive 666-piece limited collection.
                 </div>
+                <div className="h-6"></div>
                 <Link href="/murmuration">
                   <Button className="w-full bg-purple-600 hover:bg-purple-700">
                     View Murmuration 666
@@ -259,20 +260,46 @@ export default function Home() {
       
       {/* Video Section */}
       <section className="py-20 bg-white dark:bg-gray-900">
-        <Container>
-          <SectionTitle
-            preTitle="Watch & Learn"
-            title="See Fractal Swarm in Action"
-          >
-            <div className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-12">
-              Watch our demonstration video to understand how Fractal Swarm NFTs work, 
-              how to mint them, and what makes them unique in the NFT space.
-            </div>
-          </SectionTitle>
+  <Container>
+    <SectionTitle
+      preTitle="Watch"
+      title="See Our Fractal Art in Action"
+    >
+      <div className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-12">
+        Watch our demonstration videos to understand how our Fractal NFTs work
+        and what makes them unique in the NFT space.
+      </div>
+    </SectionTitle>
 
-          <Video videoId="fZ0D0cnR88E" />
-        </Container>
-      </section>
+    <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
+      <div className="flex flex-col">
+        <Video 
+         videoPath="/FractalSwarm.mp4" 
+          title="Fractal Swarm Demo"
+        />
+        <div className="mt-4 text-center">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Fractal Swarm Demo</h3>
+          <p className="text-gray-600 dark:text-gray-300">
+            Interactive particle-based fractal art with over 2 million unique combinations.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-col">
+        <Video 
+          videoPath="/murmuration.mp4"
+          title="Murmuration 666"
+        />
+        <div className="mt-4 text-center">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Murmuration 666</h3>
+          <p className="text-gray-600 dark:text-gray-300">
+            Witness the breathtaking beauty of our simulated flocking behaviors collection.
+          </p>
+        </div>
+      </div>
+    </div>
+  </Container>
+</section>
       
       {/* FAQ Section */}
       <Faq />
