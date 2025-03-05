@@ -8,6 +8,7 @@ import { Footer } from "@/components/Footer";
 import { Web3ProviderWrapper } from "@/components/Web3Provider";
 import { useEffect } from "react";
 import { suppressConsoleErrors } from "@/utils/errorSuppress";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -64,6 +65,7 @@ export default function RootLayout({
             <Footer />
           </ThemeProvider>
         </Web3ProviderWrapper>
+        <SpeedInsights />
       </body>
     </html>
   );
