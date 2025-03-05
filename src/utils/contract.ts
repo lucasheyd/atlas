@@ -5,6 +5,28 @@ import { NETWORKS } from './networks';
 export const CHAIN_ID = '0x2105'; // hex for Base network
 export const NETWORK_NAME = 'Base';
 export const FRACTAL_CONTRACT_ADDRESS = '0xcfc07303a4e916663259c3283a191b3c92a4af2c';
+export const LUNAR_NFT_CONTRACT_ADDRESS = '0xF8f5e87748C58Fc2E79D3C54bcd286FA2c7c0C12';
+
+export const LUNAR_NFT_ABI = [
+  // ERC721 standard functions
+  "function balanceOf(address owner) view returns (uint256)",
+  "function ownerOf(uint256 tokenId) view returns (address)",
+  "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)",
+  
+  // Lunar NFT specific functions
+  "function mint() public returns (uint256)",
+  "function batchUpdatePhaseMetadata(uint256 tokenId, string[] calldata ipfsHashes) public",
+  "function updatePhaseMetadata(uint256 tokenId, uint8 phase, string calldata ipfsHash) public",
+  "function getCurrentMoonPhase() public view returns (uint8)",
+  "function getCurrentMoonPhaseName() public view returns (string memory)",
+  "function getCurrentTokenIPFSHash(uint256 tokenId) public view returns (string memory)",
+  "function getPhaseMetadata(uint256 tokenId, uint8 phase) public view returns (tuple(string ipfsHash, bool isCustom))",
+  
+  // Events
+  "event LunarNFTMinted(address indexed creator, uint256 tokenId)",
+  "event PhaseMetadataUpdated(uint256 tokenId, uint8 phase, string ipfsHash)",
+  "event BatchPhaseMetadataUpdated(uint256 tokenId, string[] ipfsHashes)"
+];
 
 // Contract ABI
 export const CONTRACT_ABI = [
@@ -313,5 +335,69 @@ export const burnTokens = async (provider: ethers.providers.Web3Provider, tokenI
   } catch (error: any) {
     console.error("Error burning tokens:", error);
     throw new Error(error.message || "Failed to burn tokens. Please try again.");
+  }
+};
+
+export const getLunarNFTContract = async (provider) => {
+  try {
+    // Try to switch to the correct network but continue even if it fails
+    try {
+      await checkAndSwitchNetwork(provider);
+    } catch (error) {
+      console.warn("Network switch failed but continuing:", error);
+    }
+    
+    const signer = provider.getSigner();
+    return new ethers.Contract(LUNAR_NFT_CONTRACT_ADDRESS, LUNAR_NFT_ABI, signer);
+  } catch (error) {
+    console.error("Error getting Lunar NFT contract:", error);
+    throw error;
+  }
+};
+
+// Function to update a single moon phase
+export const updateLunarPhase = async (provider, tokenId, phase, ipfsHash) => {
+  try {
+    const contract = await getLunarNFTContract(provider);
+    const tx = await contract.updatePhaseMetadata(tokenId, phase, ipfsHash);
+    await tx.wait();
+    return tx.hash;
+  } catch (error) {
+    console.error("Error updating lunar phase:", error);
+    throw error;
+  }
+};
+
+// Function to batch update all moon phases
+export const batchUpdateLunarPhases = async (provider, tokenId, ipfsHashes) => {
+  try {
+    const contract = await getLunarNFTContract(provider);
+    const tx = await contract.batchUpdatePhaseMetadata(tokenId, ipfsHashes);
+    await tx.wait();
+    return tx.hash;
+  } catch (error) {
+    console.error("Error batch updating lunar phases:", error);
+    throw error;
+  }
+};
+
+// Function to mint a new Lunar NFT
+export const mintLunarNFT = async (provider) => {
+  try {
+    const contract = await getLunarNFTContract(provider);
+    const tx = await contract.mint();
+    const receipt = await tx.wait();
+    
+    // Find the minted token ID from the event
+    const mintEvent = receipt.events?.find(e => e.event === 'LunarNFTMinted');
+    const tokenId = mintEvent?.args?.tokenId?.toNumber();
+    
+    return {
+      txHash: tx.hash,
+      tokenId
+    };
+  } catch (error) {
+    console.error("Error minting Lunar NFT:", error);
+    throw error;
   }
 };

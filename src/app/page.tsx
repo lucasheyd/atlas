@@ -4,10 +4,13 @@ import { BotHeroSection } from "@/components/BotHeroSection";
 import { SectionTitle } from "@/components/SectionTitle";
 import { Video } from "@/components/Video";
 import { Faq } from "@/components/Faq";
+import { LunarChroniclesCard } from "@/components/LunarFeatureCard";
+import { LunarFeatureSection } from "@/components/LunarFeatureSection";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { GitBranch, Layers, PenTool, Sparkles, TreePine } from "lucide-react";
+import { GitBranch, Layers, Moon, PenTool, Sparkles, TreePine } from "lucide-react";
+import { MazeFeatureCard } from "@/components/MazeFeatureCard";
 
 export default function Home() {
   return (
@@ -20,7 +23,7 @@ export default function Home() {
         <Container>
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-              Explore Our <span className="text-indigo-600 dark:text-indigo-400">Fractal Universe</span>
+              Explore Our <span className="text-indigo-600 dark:text-indigo-400">NFT Collections</span>
             </h2>
             <div className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
               Dive into multiple collections, each offering unique generative art experiences
@@ -28,55 +31,58 @@ export default function Home() {
             </div>
           </div>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {/* Lunar Chronicles Card - Dinâmico */}
+            <LunarChroniclesCard />
+            
             {/* Fractal Swarm Card */}
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group">
-              <div className="relative h-60 overflow-hidden">
-                <Image 
-                  src="/Fractal2.png" 
-                  alt="Fractal Swarm Collection"
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                <div className="absolute bottom-4 left-4 text-white">
-                  <h3 className="text-2xl font-bold">Fractal Swarm</h3>
-                  <div className="text-gray-200">Interactive particle simulations</div>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="flex items-center">
-                    <PenTool size={16} className="text-indigo-500 mr-2" />
-                    <span className="text-sm text-gray-600 dark:text-gray-300">12 Styles</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Layers size={16} className="text-indigo-500 mr-2" />
-                    <span className="text-sm text-gray-600 dark:text-gray-300">18 Colors</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Sparkles size={16} className="text-indigo-500 mr-2" />
-                    <span className="text-sm text-gray-600 dark:text-gray-300">8 Densities</span>
-                  </div>
-                </div>
-                <div className="text-gray-600 dark:text-gray-300 mb-6">
-                  Dynamic particle-based fractal art with over 2 million unique combinations, 
-                  eternally preserved on the blockchain.
-                </div>
-                <Link href="/mint">
-                  <Button className="w-full bg-indigo-600 hover:bg-indigo-700">
-                    Explore Fractal Swarm
-                  </Button>
-                </Link>
-              </div>
-            </div>
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group flex flex-col h-full">
+  <div className="relative h-60 overflow-hidden">
+    <Image 
+      src="/Fractal2.png" 
+      alt="Fractal Swarm Collection"
+      fill
+      className="object-cover group-hover:scale-105 transition-transform duration-500"
+    />
+    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+    <div className="absolute bottom-4 left-4 text-white">
+      <h3 className="text-2xl font-bold">Fractal Swarm</h3>
+      <div className="text-gray-200">Interactive particle simulations</div>
+    </div>
+  </div>
+  <div className="p-6 flex-1 flex flex-col">
+    <div className="flex items-center gap-4 mb-4">
+      <div className="flex items-center">
+        <PenTool size={16} className="text-indigo-500 mr-2" />
+        <span className="text-sm text-gray-600 dark:text-gray-300">12 Styles</span>
+      </div>
+      <div className="flex items-center">
+        <Layers size={16} className="text-indigo-500 mr-2" />
+        <span className="text-sm text-gray-600 dark:text-gray-300">18 Colors</span>
+      </div>
+    </div>
+    <div className="text-gray-600 dark:text-gray-300 mb-6 flex-grow">
+      Dynamic particle-based fractal art with over 2 million unique combinations, 
+      eternally preserved on the blockchain.
+    </div>
+    <Link href="/fractal-swarm" className="mt-auto">
+      <Button className="w-full bg-indigo-600 hover:bg-indigo-700">
+        Explore Fractal Swarm
+      </Button>
+    </Link>
+  </div>
+</div>
             
             {/* Fractal Tree Card */}
             <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group">
               <div className="relative h-60 overflow-hidden bg-gradient-to-br from-emerald-400/20 to-blue-500/20">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <TreePine size={120} className="text-emerald-500/70" />
-                </div>
+                <Image 
+                      src="/fractaltree2.png" 
+                          alt="FractalTree"
+                         fill
+                     className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                 <div className="absolute bottom-4 left-4 text-white">
                   <h3 className="text-2xl font-bold">Fractal Trees</h3>
@@ -107,51 +113,45 @@ export default function Home() {
             </div>
             
             {/* Murmuration Card */}
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group">
-              <div className="relative h-60 overflow-hidden bg-gradient-to-br from-purple-400/20 to-pink-500/20">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  {/* Stylized bird animation */}
-                  <div className="relative w-32 h-32">
-                    <div className="absolute w-3 h-3 bg-purple-600 rounded-full top-1/3 left-1/3 animate-pulse"></div>
-                    <div className="absolute w-3 h-3 bg-purple-600 rounded-full top-1/4 left-1/2 animate-pulse delay-75"></div>
-                    <div className="absolute w-3 h-3 bg-purple-600 rounded-full top-1/2 left-1/4 animate-pulse delay-100"></div>
-                    <div className="absolute w-3 h-3 bg-purple-600 rounded-full top-2/3 left-1/3 animate-pulse delay-150"></div>
-                    <div className="absolute w-3 h-3 bg-purple-600 rounded-full top-1/2 left-2/3 animate-pulse delay-200"></div>
-                    <div className="absolute w-3 h-3 bg-purple-600 rounded-full top-1/3 left-2/3 animate-pulse delay-300"></div>
-                  </div>
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                <div className="absolute bottom-4 left-4 text-white">
-                  <h3 className="text-2xl font-bold">Murmuration 666</h3>
-                  <div className="text-gray-200">Emergent flock behavior</div>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="flex items-center">
-                    <Sparkles size={16} className="text-purple-500 mr-2" />
-                    <span className="text-sm text-gray-600 dark:text-gray-300">666 Items</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Layers size={16} className="text-purple-500 mr-2" />
-                    <span className="text-sm text-gray-600 dark:text-gray-300">Limited Edition</span>
-                  </div>
-                </div>
-                <div className="text-gray-600 dark:text-gray-300 mb-6">
-                  Witness the breathtaking beauty of simulated flocking behaviors in our 
-                  exclusive 666-piece limited collection.
-                </div>
-                <div className="h-6"></div>
-                <Link href="/murmuration">
-                  <Button className="w-full bg-purple-600 hover:bg-purple-700">
-                    View Murmuration 666
-                  </Button>
-                </Link>
-              </div>
-            </div>
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group flex flex-col h-full">
+  <div className="relative h-60 overflow-hidden bg-gradient-to-br from-purple-400/20 to-pink-500/20">
+        <Image 
+      src="/murmuration.jpg" 
+      alt="Murmuration666"
+      fill
+      className="object-cover group-hover:scale-105 transition-transform duration-500"
+    />
+
+  </div>
+  <div className="p-6 flex-1 flex flex-col">
+    <div className="flex items-center gap-4 mb-4">
+      <div className="flex items-center">
+        <Sparkles size={16} className="text-purple-500 mr-2" />
+        <span className="text-sm text-gray-600 dark:text-gray-300">666 Items</span>
+      </div>
+      <div className="flex items-center">
+        <Layers size={16} className="text-purple-500 mr-2" />
+        <span className="text-sm text-gray-600 dark:text-gray-300">Limited Edition</span>
+      </div>
+    </div>
+    <div className="text-gray-600 dark:text-gray-300 mb-6 flex-grow">
+      Witness the breathtaking beauty of simulated flocking behaviors in our 
+      exclusive 666-piece limited collection.
+    </div>
+    <Link href="/murmuration" className="mt-auto">
+      <Button className="w-full bg-purple-600 hover:bg-purple-700">
+        View Murmuration 666
+      </Button>
+    </Link>
+  </div>
+</div>
+<MazeFeatureCard />
           </div>
         </Container>
       </section>
+      
+      {/* Lunar Chronicles Feature Section - Dinâmica */}
+      <LunarFeatureSection />
       
       {/* Fractal Tree Generator Highlight */}
       <section className="py-20 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/50 dark:to-teal-950/50">
@@ -215,7 +215,7 @@ export default function Home() {
               
               <Link href="/fractal-generator">
                 <Button size="lg" className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-medium px-8 py-6 text-lg rounded-xl">
-                  Try The Generator
+                  Generate and Mint
                 </Button>
               </Link>
             </div>
@@ -260,46 +260,48 @@ export default function Home() {
       
       {/* Video Section */}
       <section className="py-20 bg-white dark:bg-gray-900">
-  <Container>
-    <SectionTitle
-      preTitle="Watch"
-      title="See Our Fractal Art in Action"
-    >
-      <div className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-12">
-        Watch our demonstration videos to understand how our Fractal NFTs work
-        and what makes them unique in the NFT space.
-      </div>
-    </SectionTitle>
+        <Container>
+          <SectionTitle
+            preTitle="Watch"
+            title="See Our NFT Collections in Action"
+          >
+            <div className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-12">
+              Watch our demonstration videos to understand how our NFTs work
+              and what makes them unique in the blockchain space.
+            </div>
+          </SectionTitle>
 
-    <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-      <div className="flex flex-col">
-        <Video 
-         videoPath="/FractalSwarm.mp4" 
-          title="Fractal Swarm Demo"
-        />
-        <div className="mt-4 text-center">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Fractal Swarm Demo</h3>
-          <p className="text-gray-600 dark:text-gray-300">
-            Interactive particle-based fractal art with over 2 million unique combinations.
-          </p>
-        </div>
-      </div>
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {/* Lunar Chronicles Video Placeholder */}
 
-      <div className="flex flex-col">
-        <Video 
-          videoPath="/murmuration.mp4"
-          title="Murmuration 666"
-        />
-        <div className="mt-4 text-center">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Murmuration 666</h3>
-          <p className="text-gray-600 dark:text-gray-300">
-            Witness the breathtaking beauty of our simulated flocking behaviors collection.
-          </p>
-        </div>
-      </div>
-    </div>
-  </Container>
-</section>
+            <div className="flex flex-col">
+              <Video 
+                videoPath="/FractalSwarm.mp4" 
+                title="Fractal Swarm Demo"
+              />
+              <div className="mt-4 text-center">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Fractal Swarm Demo</h3>
+                <p className="text-gray-600 dark:text-gray-300">
+                  Interactive particle-based fractal art with over 2 million unique combinations.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col">
+              <Video 
+                videoPath="/murmuration.mp4"
+                title="Murmuration 666"
+              />
+              <div className="mt-4 text-center">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Murmuration 666</h3>
+                <p className="text-gray-600 dark:text-gray-300">
+                  Witness the breathtaking beauty of our simulated flocking behaviors collection.
+                </p>
+              </div>
+            </div>
+          </div>
+        </Container>
+      </section>
       
       {/* FAQ Section */}
       <Faq />

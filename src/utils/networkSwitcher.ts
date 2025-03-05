@@ -1,9 +1,21 @@
-// utils/networkSwitcher.ts - Create this as a separate file
+// utils/networkSwitcher.ts
 
+import { ethers } from 'ethers';
 import { NETWORKS } from './networks';
 
+// Add Base Sepolia to networks if it doesn't exist
+if (!NETWORKS.baseSepolia) {
+  NETWORKS.baseSepolia = {
+    name: 'Base Sepolia',
+    chainId: '0x14a34',
+    currency: 'ETH',
+    rpcUrl: 'https://sepolia.base.org',
+    blockExplorer: 'https://sepolia.basescan.org'
+  };
+}
+
 // Helper function to switch networks without using ethers.js for verification
-export async function switchToNetwork(networkName: 'base' | 'bera'): Promise<boolean> {
+export async function switchToNetwork(networkName: 'base' | 'bera' | 'baseSepolia'): Promise<boolean> {
   if (typeof window === 'undefined' || !window.ethereum) {
     console.error('No crypto wallet found. Please install Metamask.');
     return false;
@@ -77,7 +89,7 @@ export async function switchToNetwork(networkName: 'base' | 'bera'): Promise<boo
 }
 
 // Check which network we're currently on using window.ethereum directly
-export async function getCurrentNetwork(): Promise<'bera' | 'base' | 'unknown'> {
+export async function getCurrentNetwork(): Promise<'bera' | 'base' | 'baseSepolia' | 'unknown'> {
   if (typeof window === 'undefined' || !window.ethereum) {
     return 'unknown';
   }
@@ -89,6 +101,8 @@ export async function getCurrentNetwork(): Promise<'bera' | 'base' | 'unknown'> 
       return 'bera';
     } else if (chainId === NETWORKS.base.chainId) {
       return 'base';
+    } else if (chainId === NETWORKS.baseSepolia.chainId) {
+      return 'baseSepolia';
     } else {
       return 'unknown';
     }
@@ -97,3 +111,29 @@ export async function getCurrentNetwork(): Promise<'bera' | 'base' | 'unknown'> 
     return 'unknown';
   }
 }
+
+// Check if the network is Base or Base Sepolia
+export function isBaseNetwork(chainId: string): boolean {
+  return chainId === NETWORKS.base.chainId || chainId === NETWORKS.baseSepolia.chainId;
+}
+
+// Get network name from chain ID
+export function getNetworkName(chainId: string): string {
+  if (chainId === NETWORKS.bera.chainId) {
+    return NETWORKS.bera.name;
+  } else if (chainId === NETWORKS.base.chainId) {
+    return NETWORKS.base.name;
+  } else if (chainId === NETWORKS.baseSepolia.chainId) {
+    return NETWORKS.baseSepolia.name;
+  } else {
+    return 'Unknown Network';
+  }
+}
+
+// Function to check and switch network for compatibility with both old and new code
+export const checkAndSwitchNetwork = async (
+  provider: ethers.providers.Web3Provider,
+  networkName: 'base' | 'bera' | 'baseSepolia'
+): Promise<boolean> => {
+  return switchToNetwork(networkName);
+};

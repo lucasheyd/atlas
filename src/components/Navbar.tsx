@@ -1,292 +1,254 @@
 "use client";
+
 import React, { useState, useEffect } from 'react';
 import Link from "next/link";
-import ThemeChanger from "./DarkSwitch";
-import Image from "next/image"
-import { Disclosure } from "@headlessui/react";
-import { connectWallet, isOnBaseNetwork, switchToBaseNetwork, switchToBeraNetwork } from '@/utils/wallet';
+import Image from "next/image";
+import { ethers } from 'ethers';
+import { 
+  CreditCard, 
+  Layers, 
+  Moon, 
+  Palette, 
+  Settings,
+  Wallet,
+  RefreshCw,
+  CheckCircle,
+  ChevronDown,
+  Sparkles,
+  Gamepad2 
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 export const Navbar = () => {
-  const [walletAddress, setWalletAddress] = useState('');
-  const [currentNetwork, setCurrentNetwork] = useState('');
-  const [networkColor, setNetworkColor] = useState('bg-gray-600');
+  const [isOpen, setIsOpen] = useState(false);
+  const [account, setAccount] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
 
-  const navigation = [
-  { name: "Fractal Swarm", href: "/mint" },
-  { name: "Fractal Tree", href: "/fractal-generator" },
-  { name: "Murmuration 666", href: "/murmuration" },
-  { name: "Gallery", href: "/gallery" },
-  { name: "Bot", href: "/bot" }
-];
-
-  // Check wallet and network on component mount
-  useEffect(() => {
-    const checkWalletAndNetwork = async () => {
+  // Connect wallet function
+  const connectWallet = async () => {
+    if (typeof window !== 'undefined' && typeof window.ethereum !== 'undefined') {
       try {
-        // Check if wallet is already connected
-        if (typeof window !== 'undefined' && window.ethereum) {
-          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-          if (accounts.length > 0) {
-            setWalletAddress(accounts[0]);
-          }
-        }
-
-        // Get current network
-        await checkCurrentNetwork();
+        setLoading(true);
+        const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
+        await web3Provider.send('eth_requestAccounts', []);
         
-        // Add listener for network change
-        if (typeof window !== 'undefined' && window.ethereum) {
-          window.ethereum.on('chainChanged', () => {
-            checkCurrentNetwork();
-          });
-          
-          window.ethereum.on('accountsChanged', (accounts) => {
-            if (accounts.length === 0) {
-              setWalletAddress('');
-            } else {
-              setWalletAddress(accounts[0]);
-            }
-          });
-        }
+        const signer = web3Provider.getSigner();
+        const address = await signer.getAddress();
+        setAccount(address);
       } catch (error) {
-        console.error('Network check failed', error);
+        console.error('Error connecting wallet:', error);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      alert('Please install MetaMask to use this feature.');
+    }
+  };
+
+  // Check if wallet is already connected on component mount
+  useEffect(() => {
+    const checkConnection = async () => {
+      if (typeof window !== 'undefined' && window.ethereum) {
+        try {
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const accounts = await provider.listAccounts();
+          if (accounts.length > 0) {
+            setAccount(accounts[0]);
+          }
+        } catch (error) {
+          console.error('Error checking wallet connection:', error);
+        }
       }
     };
-
-    checkWalletAndNetwork();
     
-    // Cleanup
+    checkConnection();
+    
+    // Handle account changes
+    const handleAccountsChanged = (accounts: string[]) => {
+      if (accounts.length > 0) {
+        setAccount(accounts[0]);
+      } else {
+        setAccount('');
+      }
+    };
+    
+    if (window.ethereum) {
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+    }
+    
     return () => {
-      if (typeof window !== 'undefined' && window.ethereum) {
-        window.ethereum.removeListener('chainChanged', checkCurrentNetwork);
+      if (window.ethereum) {
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
       }
     };
   }, []);
 
-  // Check current network
-  const checkCurrentNetwork = async () => {
-    if (typeof window !== 'undefined' && window.ethereum) {
-      try {
-        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-        
-        // Normalize chainId to lowercase for case-insensitive comparison
-        const normalizedChainId = chainId.toLowerCase();
-        
-        // Check for Base network (Mainnet or Sepolia)
-        if (normalizedChainId === '0x2105' || normalizedChainId === '0x14a34') {
-          setCurrentNetwork('Base');
-          setNetworkColor('bg-blue-600');
-        } 
-        // Check for Bera network (Mainnet or Testnet)
-        else if (normalizedChainId === '0x138de' || normalizedChainId === '0x13985') {
-          setCurrentNetwork('Bera');
-          setNetworkColor('bg-green-600');
-        } 
-        // Unknown network
-        else {
-          setCurrentNetwork('Unknown');
-          setNetworkColor('bg-gray-600');
-        }
-        
-        console.log('Current network detected:', currentNetwork, 'Chain ID:', chainId);
-      } catch (error) {
-        console.error('Error checking chain ID', error);
-        setCurrentNetwork('Error');
-        setNetworkColor('bg-red-600');
-      }
-    }
-  };
-
-  // Handle wallet connection
-  const handleConnectWallet = async () => {
-    try {
-      const address = await connectWallet();
-      setWalletAddress(address);
-      await checkCurrentNetwork();
-    } catch (error) {
-      console.error('Wallet connection failed', error);
-    }
-  };
-
-  // Handle network switch to Base
-  const handleSwitchToBase = async () => {
-    try {
-      await switchToBaseNetwork();
-      setTimeout(checkCurrentNetwork, 1000); // Re-check after switch
-    } catch (error) {
-      console.error('Network switch failed', error);
-    }
-  };
-
-  // Handle network switch to Bera
-  const handleSwitchToBera = async () => {
-    try {
-      await switchToBeraNetwork();
-      setTimeout(checkCurrentNetwork, 1000); // Re-check after switch
-    } catch (error) {
-      console.error('Network switch failed', error);
-    }
-  };
-
-  // Render network buttons
-  const renderNetworkButtons = () => {
-    if (!walletAddress) return null;
-    
-    return (
-      <div className="flex space-x-2">
-        <button 
-          onClick={handleSwitchToBase}
-          className={`px-4 py-1 text-xs text-white rounded-full ${
-            currentNetwork === 'Base' 
-              ? 'bg-blue-600' 
-              : 'bg-gray-600 hover:bg-blue-500'
-          }`}
-        >
-          Base
-        </button>
-        <button 
-          onClick={handleSwitchToBera}
-          className={`px-4 py-1 text-xs text-white rounded-full ${
-            currentNetwork === 'Bera' 
-              ? 'bg-green-600' 
-              : 'bg-gray-600 hover:bg-green-500'
-          }`}
-        >
-          Bera
-        </button>
-      </div>
-    );
-  };
-
   return (
-    <div className="w-full">
-      <nav className="container relative flex flex-wrap items-center justify-between p-8 mx-auto lg:justify-between xl:px-1">
-        {/* Logo  */}
-        <Link href="/">
-          <span className="flex items-center space-x-2 text-2xl font-medium text-indigo-500 dark:text-gray-100">
-            <span>
-              <Image
-                src="/img/logo.svg"
-                width="32"
-                alt="Nebula Flow Logo"
-                height="32"
-                className="w-8"
-              />
-            </span>
-            <span>Nebula Flow</span>
+    <nav className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-sm">
+      <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+        {/* Logo */}
+        <Link href="/" className="flex items-center space-x-2">
+          <Image
+            src="/img/logo.svg"
+            width="32"
+            alt="Nebula Flow Logo"
+            height="32"
+            className="w-8"
+          />
+          <span className="text-2xl font-bold text-gray-800 dark:text-white">
+            Nebula Flow
           </span>
         </Link>
 
-        {/* Wallet Connection */}
-        <div className="gap-3 nav__item mr-2 lg:flex ml-auto lg:ml-0 lg:order-2">
-          <ThemeChanger />
-          <div className="hidden lg:flex nav__item flex-col items-end">
-            {/* Network Selector Desktop */}
-            {walletAddress && (
-              <div className="mb-2 flex space-x-2 justify-end">
-                {renderNetworkButtons()}
-              </div>
-            )}
-            
-            {/* Wallet Connection Button */}
-            {!walletAddress ? (
-              <button 
-                onClick={handleConnectWallet}
-                className="px-6 py-2 text-white bg-indigo-600 rounded-md md:ml-5 hover:bg-indigo-700 transition-colors"
-              >
-                Connect Wallet
-              </button>
-            ) : (
-              <div className={`px-6 py-2 text-white ${networkColor} rounded-md md:ml-5`}>
-                {`${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`}
-              </div>
-            )}
-          </div>
-        </div>
-                
-        <Disclosure>
-          {({ open }) => (
-            <div className="flex flex-wrap items-center justify-between w-full lg:w-auto">
-              <Disclosure.Button
-                aria-label="Toggle Menu"
-                className="px-2 py-1 text-gray-500 rounded-md lg:hidden hover:text-indigo-500 focus:text-indigo-500 focus:bg-indigo-100 focus:outline-none dark:text-gray-300 dark:focus:bg-trueGray-700"
-              >
-                <svg
-                  className="w-6 h-6 fill-current"
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                >
-                  {open ? (
-                    <path
-                      fillRule="evenodd"
-                      clipRule="evenodd"
-                      d="M18.278 16.864a1 1 0 0 1-1.414 1.414l-4.829-4.828-4.828 4.828a1 1 0 0 1-1.414-1.414l4.828-4.829-4.828-4.828a1 1 0 0 1 1.414-1.414l4.829 4.828 4.828-4.828a1 1 0 1 1 1.414 1.414l-4.828 4.829 4.828 4.828z"
-                    />
-                  ) : (
-                    <path
-                      fillRule="evenodd"
-                      d="M4 5h16a1 1 0 0 1 0 2H4a1 1 0 1 1 0-2zm0 6h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2zm0 6h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2z"
-                    />
-                  )}
-                </svg>
-              </Disclosure.Button>
-
-              <Disclosure.Panel className="flex flex-col w-full my-5 lg:hidden">
-                <div className="flex flex-col w-full my-5 lg:hidden">
-                  {navigation.map((item) => (
-                    <Link 
-                      key={item.name} 
-                      href={item.href} 
-                      className="w-full px-4 py-2 text-gray-500 rounded-md dark:text-gray-300 hover:text-indigo-500 focus:text-indigo-500 focus:bg-indigo-100 dark:focus:bg-gray-800 focus:outline-none"
-                    >
-                      {item.name}
-                    </Link>
-                  ))}
-                  
-                  {/* Network Selector Mobile */}
-                  {walletAddress && (
-                    <div className="flex justify-center space-x-2 mt-3">
-                      {renderNetworkButtons()}
-                    </div>
-                  )}
-                  
-                  <div className="w-full mt-3">
-                    {!walletAddress ? (
-                      <button 
-                        onClick={handleConnectWallet}
-                        className="w-full px-6 py-2 text-center text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors"
-                      >
-                        Connect Wallet
-                      </button>
-                    ) : (
-                      <div className={`w-full px-6 py-2 text-center text-white ${networkColor} rounded-md`}>
-                        {`${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Disclosure.Panel>
+        <div className="flex items-center gap-3">
+          {/* Wallet Connection Button/Status */}
+          {account ? (
+            <div className="flex items-center px-4 py-2 rounded-xl bg-gradient-to-r from-green-100 to-emerald-100 text-emerald-800 dark:from-green-900/30 dark:to-emerald-900/30 dark:text-emerald-300 border border-green-200 dark:border-green-800/30 shadow-sm">
+              <CheckCircle size={16} className="mr-2 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-sm font-medium">{account.slice(0, 6)}...{account.slice(-4)}</span>
             </div>
+          ) : (
+            <Button 
+              size="sm"
+              onClick={connectWallet}
+              disabled={loading}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md border-0 px-4 py-2 rounded-xl"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw size={14} className="mr-2 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <Wallet size={14} className="mr-2" />
+                  Connect Wallet
+                </>
+              )}
+            </Button>
           )}
-        </Disclosure>
-        
-        {/* Main menu */}
-        <div className="hidden text-center lg:flex lg:items-center">
-          <ul className="items-center justify-end flex-1 pt-6 list-none lg:pt-0 lg:flex">
-            {navigation.map((menu) => (
-              <li className="mr-3 nav__item" key={menu.name}>
-                <Link 
-                  href={menu.href} 
-                  className="inline-block px-4 py-2 text-lg font-normal text-gray-800 no-underline rounded-md dark:text-gray-200 hover:text-indigo-500 focus:text-indigo-500 focus:bg-indigo-100 focus:outline-none dark:focus:bg-gray-800"
-                >
-                  {menu.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </nav>
+
+          {/* Navigation Dropdown - Redesigned */}
+          <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 text-indigo-700 dark:text-indigo-300 hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/40 dark:hover:to-purple-900/40 border border-indigo-200 dark:border-indigo-800/30 shadow-sm rounded-xl px-4 py-2 flex items-center gap-2"
+              >
+                <span className="font-medium">Collections</span>
+                <ChevronDown size={14} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                {isOpen && (
+                  <span className="absolute top-0 right-0 h-2 w-2 bg-indigo-500 rounded-full animate-pulse"></span>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-64 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-indigo-100 dark:border-indigo-800/30 shadow-lg rounded-xl p-1 mt-1" align="end">
+              <DropdownMenuLabel className="text-indigo-600 dark:text-indigo-400 font-medium px-3 py-2 flex items-center">
+                <Sparkles size={16} className="mr-2" />
+                NFT Collections
+              </DropdownMenuLabel>
+              <DropdownMenuGroup className="px-1">
+                <DropdownMenuItem asChild className="rounded-lg mb-1 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 cursor-pointer">
+
+                  <Link href="/fractal-swarm" className="cursor-pointer flex items-center px-3 py-2">
+                    <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mr-3 text-purple-600 dark:text-purple-400">
+                      <Palette className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-white">Fractal Swarm</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Interactive particles</div>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+<DropdownMenuItem asChild className="rounded-lg mb-1 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 cursor-pointer">
+  <Link href="/maze-puzzle" className="cursor-pointer flex items-center px-3 py-2">
+    <div className="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center mr-3 text-teal-600 dark:text-teal-400">
+      <Gamepad2 className="h-4 w-4" />
     </div>
+    <div>
+      <div className="font-medium text-gray-900 dark:text-white">Maze Puzzle</div>
+      <div className="text-xs text-gray-500 dark:text-gray-400">Interactive game</div>
+    </div>
+  </Link>
+</DropdownMenuItem>
+                <DropdownMenuItem asChild className="rounded-lg mb-1 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 cursor-pointer">
+                  <Link href="/fractal-generator" className="cursor-pointer flex items-center px-3 py-2">
+                    <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-3 text-green-600 dark:text-green-400">
+                      <Palette className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-white">Fractal Tree</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Generative trees</div>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="rounded-lg mb-1 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 cursor-pointer">
+                  <Link href="/lunar-update" className="cursor-pointer flex items-center px-3 py-2">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mr-3 text-blue-600 dark:text-blue-400">
+                      <Moon className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-white">Lunar Chronicles</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Dynamic moon phases</div>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="rounded-lg mb-1 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 cursor-pointer">
+                  <Link href="/murmuration" className="cursor-pointer flex items-center px-3 py-2">
+                    <div className="w-8 h-8 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center mr-3 text-pink-600 dark:text-pink-400">
+                      <Layers className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-white">Murmuration 666</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Flocking simulation</div>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+
+              <DropdownMenuSeparator className="my-1 border-indigo-100 dark:border-indigo-800/30" />
+
+              <DropdownMenuLabel className="text-indigo-600 dark:text-indigo-400 font-medium px-3 py-2 flex items-center">
+                <Settings size={16} className="mr-2" />
+                Explore
+              </DropdownMenuLabel>
+              <DropdownMenuGroup className="px-1">
+                <DropdownMenuItem asChild className="rounded-lg mb-1 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 cursor-pointer">
+                  <Link href="/gallery" className="cursor-pointer flex items-center px-3 py-2">
+                    <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mr-3 text-amber-600 dark:text-amber-400">
+                      <CreditCard className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-white">Gallery</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Browse collections</div>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 cursor-pointer">
+                  <Link href="/bot" className="cursor-pointer flex items-center px-3 py-2">
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center mr-3 text-indigo-600 dark:text-indigo-400">
+                      <Settings className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-white">Minting Bot</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Automated tools</div>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+    </nav>
   );
 };
 

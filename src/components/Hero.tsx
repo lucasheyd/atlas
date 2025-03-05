@@ -32,14 +32,9 @@ export const Hero = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-4">
-              <Link href="/mint" className="w-full sm:w-auto">
+              <Link href="/fractal-swarm" className="w-full sm:w-auto">
                 <Button size="lg" className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium px-8 py-6 text-lg rounded-xl">
-                  Mint Your Fractal
-                </Button>
-              </Link>
-              <Link href="/fractal-generator" className="w-full sm:w-auto">
-                <Button variant="outline" size="lg" className="w-full border-indigo-600 dark:border-indigo-400 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 font-medium px-8 py-6 text-lg rounded-xl">
-                  Try the Generator
+                  Mint Your Swarm
                 </Button>
               </Link>
             </div>

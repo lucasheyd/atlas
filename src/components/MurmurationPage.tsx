@@ -344,15 +344,10 @@ const MurmurationPage = () => {
             </div>
             
             <div className="mb-6 text-gray-700 dark:text-gray-300">
-              Connect your wallet to mint Murmuration NFTs or redeem burned Fractal tokens.
+              Connect your wallet to mint Murmuration NFTs 
             </div>
             
-            <button 
-              onClick={connectWallet}
-              className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-lg font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-            >
-              Connect Wallet
-            </button>
+	
           </div>
         </div>
       </Container>
