@@ -154,7 +154,17 @@ useEffect(() => {
 
   // Save progress to contract
   const handleSaveProgress = useCallback(async () => {
-    if (!ownsToken || !gameWon) return;
+  if (!wallet.isConnected) {
+    // Usuário não está conectado, não tenta salvar
+    return;
+  }
+  
+  if (!ownsToken) {
+    // Usuário está conectado mas não é proprietário, não tenta salvar
+    return;
+  }
+  
+  if (!gameWon) return;
     
     setSaving(true);
     setSavingError(null);
@@ -288,7 +298,7 @@ useEffect(() => {
     }
 
     // Don't allow movement if the user doesn't own the token
-    if (!ownsToken) return;
+   // if (!ownsToken) return;
     
     if (gameWon || !player) return;
 
@@ -786,7 +796,7 @@ useEffect(() => {
       {gameWon && <GameWonOverlay />}
 
       {/* Ownership validation overlay */}
-      {!isLoading && !walletLoading && ownsToken === false && <OwnershipValidationOverlay />}
+     {/* {!isLoading && !walletLoading && ownsToken === false && <OwnershipValidationOverlay />} */}
 
       {/* Mobile controls */}
       <div className="mt-6 grid grid-cols-3 gap-2 max-w-xs touch-none">
@@ -799,7 +809,7 @@ useEffect(() => {
             borderColor: nftTraits.uiTheme.primary, 
             color: nftTraits.uiTheme.primary 
           }}
-          disabled={!ownsToken}
+         
         >
           ↑
         </button>
