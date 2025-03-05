@@ -9,6 +9,7 @@ import { Web3ProviderWrapper } from "@/components/Web3Provider";
 import { useEffect } from "react";
 import { suppressConsoleErrors } from "@/utils/errorSuppress";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/react";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -66,6 +67,7 @@ export default function RootLayout({
           </ThemeProvider>
         </Web3ProviderWrapper>
         <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
