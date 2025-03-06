@@ -107,35 +107,28 @@ useEffect(() => {
     console.log('Game data loaded:', gameData);
     
     try {
-      // Set unlocked levels
-      const maxLevel = Math.max(1, gameData.currentLevel || 1);
-      const levels = Array.from(
-        {length: maxLevel}, 
-        (_, i) => i + 1
-      );
-      setUnlockedLevels(levels);
-      
-      // Set current level from URL or contract
-      const levelParam = parseInt(searchParams?.get('level') || '0');
-      const safeLevel = levelParam > 0 
-        ? Math.min(levelParam, maxLevel) 
-        : maxLevel;
+      // Obter o nível dos parâmetros URL ou usar o padrão 1
+      const levelParam = parseInt(searchParams?.get('level') || '1');
+      const safeLevel = Math.min(Math.max(1, levelParam), 3); // Limitar entre 1 e 3
       
       setCurrentLevel(safeLevel);
       
-      // Set best times and moves
+      // Usar todos os níveis disponíveis
+      setUnlockedLevels([1, 2, 3]);
+      
+      // Definir melhores tempos e movimentos
       setBestTimes(gameData.bestTimes || [null, null, null]);
       setBestMoves(gameData.bestMoves || [null, null, null]);
       
-      // Mark as initialized
+      // Marcar como inicializado
       setInitialized(true);
       setIsLoading(false);
       
       console.log('Game initialized with level:', safeLevel);
     } catch (error) {
       console.error('Error initializing game:', error);
-      // Fallback to defaults
-      setUnlockedLevels([1]);
+      // Fallback para valores padrão
+      setUnlockedLevels([1, 2, 3]);
       setCurrentLevel(1);
       setBestTimes([null, null, null]);
       setBestMoves([null, null, null]);
@@ -445,45 +438,41 @@ useEffect(() => {
 
   // Level Selector Component
   const LevelSelector = () => (
-    <div className="flex justify-center gap-4 mb-4">
-      {[1, 2, 3].map(level => (
-        <button
-          key={level}
-          onClick={() => {
-            // Check if level is unlocked
-            if (unlockedLevels.includes(level)) {
-              // Change URL to reflect selected level
-              const url = new URL(window.location.href);
-              url.searchParams.set('level', level.toString());
-              window.history.replaceState({}, '', url.toString());
-              
-              // Reset game for selected level
-              resetGame(level);
-            }
-          }}
-          disabled={!unlockedLevels.includes(level) || !ownsToken}
-          className={`px-4 py-2 rounded-lg transition-all duration-200 ${
-            unlockedLevels.includes(level) && ownsToken
-              ? 'bg-opacity-100 cursor-pointer' 
-              : 'opacity-50 cursor-not-allowed'
-          }`}
-          style={{
-            backgroundColor: unlockedLevels.includes(level) && ownsToken
-              ? nftTraits.uiTheme.primary 
-              : 'gray',
-            color: nftTraits.uiTheme.bg
-          }}
-        >
-          Level {level}
-          {bestTimes[level-1] !== null && (
-            <span className="text-xs block">
-              Best: {bestTimes[level-1]}s
-            </span>
-          )}
-        </button>
-      ))}
-    </div>
-  );
+  <div className="flex justify-center gap-4 mb-4">
+    {[1, 2, 3].map(level => (
+      <button
+        key={level}
+        onClick={() => {
+          // Change URL to reflect selected level
+          const url = new URL(window.location.href);
+          url.searchParams.set('level', level.toString());
+          window.history.replaceState({}, '', url.toString());
+          
+          // Reset game for selected level
+          resetGame(level);
+        }}
+        // Remover verificação de unlockedLevels
+        className={`px-4 py-2 rounded-lg transition-all duration-200 ${
+          currentLevel === level
+            ? 'bg-opacity-100 cursor-pointer border-2' 
+            : 'bg-opacity-80 cursor-pointer'
+        }`}
+        style={{
+          backgroundColor: nftTraits.uiTheme.primary,
+          borderColor: currentLevel === level ? nftTraits.uiTheme.bg : nftTraits.uiTheme.primary,
+          color: nftTraits.uiTheme.bg
+        }}
+      >
+        Level {level}
+        {bestTimes[level-1] !== null && (
+          <span className="text-xs block">
+            Best: {bestTimes[level-1]}s
+          </span>
+        )}
+      </button>
+    ))}
+  </div>
+);
 
   // Game won overlay component
   const GameWonOverlay = () => (
@@ -522,41 +511,41 @@ useEffect(() => {
         )}
         
         <div className="flex justify-center space-x-4">
-          {currentLevel < 3 && unlockedLevels.includes(currentLevel + 1) && (
-            <button
-              onClick={() => {
-                const nextLevel = currentLevel + 1;
-                // Change URL to reflect next level
-                const url = new URL(window.location.href);
-                url.searchParams.set('level', nextLevel.toString());
-                window.history.replaceState({}, '', url.toString());
-                
-                // Reset game for next level
-                resetGame(nextLevel);
-              }}
-              className="px-4 py-2 rounded border-2 transition"
-              style={{ 
-                borderColor: nftTraits.uiTheme.primary, 
-                color: nftTraits.uiTheme.primary 
-              }}
-            >
-              Next Level
-            </button>
-          )}
-          <button
-            onClick={() => {
-              // Replay current level
-              resetGame(currentLevel);
-            }}
-            className="px-4 py-2 rounded border-2 transition"
-            style={{ 
-              borderColor: nftTraits.uiTheme.primary, 
-              color: nftTraits.uiTheme.primary 
-            }}
-          >
-            Replay Level
-          </button>
-        </div>
+    {currentLevel < 3 && (
+      <button
+        onClick={() => {
+          const nextLevel = currentLevel + 1;
+          // Change URL to reflect next level
+          const url = new URL(window.location.href);
+          url.searchParams.set('level', nextLevel.toString());
+          window.history.replaceState({}, '', url.toString());
+          
+          // Reset game for next level
+          resetGame(nextLevel);
+        }}
+        className="px-4 py-2 rounded border-2 transition"
+        style={{ 
+          borderColor: nftTraits.uiTheme.primary, 
+          color: nftTraits.uiTheme.primary 
+        }}
+      >
+        Next Level
+      </button>
+    )}
+    <button
+      onClick={() => {
+        // Replay current level
+        resetGame(currentLevel);
+      }}
+      className="px-4 py-2 rounded border-2 transition"
+      style={{ 
+        borderColor: nftTraits.uiTheme.primary, 
+        color: nftTraits.uiTheme.primary 
+      }}
+    >
+      Play Again
+    </button>
+  </div>
       </div>
     </div>
   );
@@ -746,16 +735,19 @@ useEffect(() => {
 
       {/* Wallet connection status */}
       {!wallet.isConnected && (
-        <div className="mb-4">
-          <Button 
-            onClick={connect} 
-            className="bg-teal-600 hover:bg-teal-700 text-white"
-          >
-            <WalletIcon className="mr-2 h-4 w-4" />
-            Connect Wallet to Play
-          </Button>
-        </div>
-      )}
+  <div className="mb-4">
+    <p className="text-sm mb-2 opacity-80">
+      You can play right now! Connect your wallet to save your progress.
+    </p>
+    <Button 
+      onClick={connect} 
+      className="bg-teal-600 hover:bg-teal-700 text-white"
+    >
+      <WalletIcon className="mr-2 h-4 w-4" />
+      Connect Wallet (optional)
+    </Button>
+  </div>
+)}
 
       {/* Level Selector */}
       <LevelSelector />

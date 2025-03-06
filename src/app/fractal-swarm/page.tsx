@@ -258,8 +258,8 @@ export default function MintPage() {
             {!walletConnected ? (
               <div className="text-center">
                 <p className="mb-4 text-gray-700 dark:text-gray-300">
-                  Connect your wallet to mint your <div></div> Fractal Swarm
-                </p>
+                   Connect your wallet to mint your <br /> Fractal Swarm
+                 </p>
 
               </div>
             ) : !onCorrectNetwork ? (
@@ -296,7 +296,7 @@ export default function MintPage() {
                         type="number" 
                         value={mintAmount}
                         onChange={(e) => setMintAmount(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
-                        className="w-16 text-center bg-white dark:bg-gray-700 text-gray-800 dark:text-white py-2 border-0"
+                        className="text-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white px-4 py-2 text-xl font-bold"
                         min="1"
                         max="10"
                       />
