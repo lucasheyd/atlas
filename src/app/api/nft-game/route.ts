@@ -81,6 +81,29 @@ export async function GET(req: Request) {
       font-weight: bold;
       margin-bottom: 0.5rem;
     }
+.level-selector {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.level-btn {
+  background: transparent;
+  border: 2px solid ${primaryColor};
+  color: ${primaryColor};
+  opacity: 0.5;
+  transition: opacity 0.3s;
+  padding: 0.5rem 1rem;
+}
+
+.level-btn.active {
+  opacity: 1;
+}
+
+.level-btn:hover {
+  opacity: 0.8;
+}
     
     a {
       color: ${primaryColor};
@@ -211,11 +234,11 @@ export async function GET(req: Request) {
   <div class="container">
     <h1>Maze Puzzle #${tokenId}</h1>
     
-    <div class="info">
-      <p>
-        Visite <a href="https://fractal-swarm.xyz/game" target="_blank">fractal-swarm.xyz/game</a> para salvar seu progresso!
-      </p>
-    </div>
+   <div class="level-selector">
+     <button class="btn level-btn ${level === '1' ? 'active' : ''}" data-level="1">Level 1</button>
+     <button class="btn level-btn ${level === '2' ? 'active' : ''}" data-level="2">Level 2</button>
+     <button class="btn level-btn ${level === '3' ? 'active' : ''}" data-level="3">Level 3</button>
+  </div>
     
     <div class="stats">
       <div id="game-stats">Time: 0s | Moves: 0</div>
@@ -244,7 +267,7 @@ export async function GET(req: Request) {
     </div>
     
     <div class="traits">
-      <p>Use as setas do teclado ou botões para mover</p>
+      <p>UUse the arrow keys or buttons to move.</p>
       <p>Player: ${playerShape} | Goal: ${goalShape} | Trail: ${trailColor} | Theme: ${uiTheme}</p>
     </div>
   </div>
@@ -367,6 +390,18 @@ export async function GET(req: Request) {
         document.getElementById('left-btn').addEventListener('touchstart', (e) => { e.preventDefault(); this.movePlayer(-1, 0); });
         document.getElementById('reset-btn').addEventListener('touchstart', (e) => { e.preventDefault(); this.resetGame(this.currentLevel); });
         
+        // Level selector buttons
+       document.querySelectorAll('.level-btn').forEach(btn => {
+                  btn.addEventListener('click', () => {
+                  const selectedLevel = btn.getAttribute('data-level');
+    
+                  // Update URL
+                       const url = new URL(window.location.href);
+                    url.searchParams.set('level', selectedLevel);
+                      window.location.href = url.toString();
+                       });
+                    });
+
         // Keyboard events
         window.addEventListener('keydown', (e) => {
           switch (e.key) {

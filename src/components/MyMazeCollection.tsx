@@ -333,14 +333,14 @@ export const MyMazeCollection = () => {
                       </Button>
                     )}
                     
-                    {nft.animationUrl && (
-                      <Link href={nft.animationUrl} target="_blank" rel="noopener noreferrer">
-                        <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white">
-                          <Gamepad2 className="mr-2 h-4 w-4" />
-                          Play Game{nft.demo ? " (Demo)" : ""}
-                        </Button>
-                      </Link>
-                    )}
+                    {nft.id && (
+  <Link href={`/game?tokenId=${nft.id}`}>
+    <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white">
+      <Gamepad2 className="mr-2 h-4 w-4" />
+      Play Game{nft.demo ? " (Demo)" : ""}
+    </Button>
+  </Link>
+)}
                   </div>
                 </div>
               </div>

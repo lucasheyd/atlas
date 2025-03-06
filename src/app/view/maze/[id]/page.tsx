@@ -196,16 +196,14 @@ export default function MazeNFTView({ params }: { params: { id: string } }) {
             )}
             
             {/* Play Button */}
-            {nft.animationUrl && (
-              <div className="mb-8">
-                <Link href={nft.animationUrl} target="_blank" rel="noopener noreferrer">
-                  <Button size="lg" className="w-full bg-teal-600 hover:bg-teal-700">
-                    <Gamepad2 className="mr-2 h-5 w-5" />
-                    Play Maze Game
-                  </Button>
-                </Link>
-              </div>
-            )}
+            {nft.id && (
+  <Link href={`/game?tokenId=${nft.id}`}>
+    <Button size="lg" className="w-full bg-teal-600 hover:bg-teal-700">
+      <Gamepad2 className="mr-2 h-5 w-5" />
+      Play Maze Game
+    </Button>
+  </Link>
+)}
             
             {/* Back Button */}
             <Link href="/maze-puzzle">

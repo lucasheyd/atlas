@@ -145,39 +145,6 @@ useEffect(() => {
     }
   }, [wallet.contract, ownsToken, fetchNFTTraits]);
 
-  // Save progress to contract
-  const handleSaveProgress = useCallback(async () => {
-  if (!wallet.isConnected) {
-    // Usuário não está conectado, não tenta salvar
-    return;
-  }
-  
-  if (!ownsToken) {
-    // Usuário está conectado mas não é proprietário, não tenta salvar
-    return;
-  }
-  
-  if (!gameWon) return;
-    
-    setSaving(true);
-    setSavingError(null);
-    
-    try {
-      await saveProgress(currentLevel, currentTime, moveCount);
-    } catch (error: any) {
-      setSavingError(error.message || 'Failed to save progress');
-    } finally {
-      setSaving(false);
-    }
-  }, [ownsToken, gameWon, currentLevel, currentTime, moveCount, saveProgress]);
-
-  // Automatically save progress when game is won
-  useEffect(() => {
-    if (gameWon && !saving && ownsToken) {
-      handleSaveProgress();
-    }
-  }, [gameWon, saving, ownsToken, handleSaveProgress]);
-
   // Reset game with specific level difficulty (from original component)
   const resetGame = useCallback((level: number) => {
     // Set difficulty based on level
@@ -282,6 +249,65 @@ useEffect(() => {
     
     setCurrentLevel(level);
   }, []);
+
+
+  const [isSavingBlocked, setIsSavingBlocked] = useState(false);
+
+  // Save progress to contract
+ const handleSaveProgress = useCallback(async () => {
+  if (isSavingBlocked) return; // Previne múltiplas tentativas
+
+  if (!wallet.isConnected) {
+    // Usuário não está conectado, não tenta salvar
+    return;
+  }
+  
+  if (!ownsToken) {
+    // Usuário está conectado mas não é proprietário, não tenta salvar
+    return;
+  }
+  
+  if (!gameWon) return;
+    
+    setSaving(true);
+    setSavingError(null);
+    
+    try {
+    await saveProgress(currentLevel, currentTime, moveCount);
+    
+    // Se salvou com sucesso, avança automaticamente para próximo nível
+    if (currentLevel < 3) {
+      const nextLevel = currentLevel + 1;
+      const url = new URL(window.location.href);
+      url.searchParams.set('level', nextLevel.toString());
+      window.history.replaceState({}, '', url.toString());
+      
+      resetGame(nextLevel);
+    }
+  } catch (error: any) {
+    setSavingError(error.message || 'Failed to save progress');
+  } finally {
+    setSaving(false);
+    setIsSavingBlocked(false); // Desbloqueia após tentativa
+  }
+}, [
+  ownsToken, 
+  gameWon, 
+  currentLevel, 
+  currentTime, 
+  moveCount, 
+  saveProgress, 
+  resetGame,
+  isSavingBlocked
+]);
+
+  // Automatically save progress when game is won
+//  useEffect(() => {
+//    if (gameWon && !saving && ownsToken) {
+//      handleSaveProgress();
+//    }
+//  }, [gameWon, saving, ownsToken, handleSaveProgress]);
+
 
   // Move player (from original component with ownership validation)
   const movePlayer = useCallback((dx: number, dy: number, event?: React.MouseEvent | KeyboardEvent) => {
@@ -475,80 +501,94 @@ useEffect(() => {
 );
 
   // Game won overlay component
-  const GameWonOverlay = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-      <div 
-        className="bg-opacity-90 p-8 rounded-lg text-center"
-        style={{ 
-          backgroundColor: nftTraits.uiTheme.bg, 
-          borderColor: nftTraits.uiTheme.primary 
-        }}
-      >
-        <h2 
-          className="text-2xl font-bold mb-4" 
-          style={{ color: nftTraits.uiTheme.primary }}
-        >
-          Level Completed!
-        </h2>
-        <p className="mb-4" style={{ color: nftTraits.uiTheme.text }}>
-          Time: {currentTime}s | Moves: {moveCount}
-        </p>
-        
-        {saving ? (
-          <div className="flex items-center justify-center mb-4" style={{ color: nftTraits.uiTheme.text }}>
-            <Loader2 className="animate-spin mr-2" />
-            Saving progress to blockchain...
-          </div>
-        ) : savingError ? (
-          <div className="text-red-500 mb-4">
-            Error saving: {savingError}. Your progress will not be recorded.
-          </div>
-        ) : (
-          <div className="flex items-center justify-center mb-4 text-green-500">
-            <Trophy className="mr-2" />
-            Progress saved to blockchain!
-          </div>
-        )}
-        
-        <div className="flex justify-center space-x-4">
-    {currentLevel < 3 && (
-      <button
-        onClick={() => {
-          const nextLevel = currentLevel + 1;
-          // Change URL to reflect next level
-          const url = new URL(window.location.href);
-          url.searchParams.set('level', nextLevel.toString());
-          window.history.replaceState({}, '', url.toString());
-          
-          // Reset game for next level
-          resetGame(nextLevel);
-        }}
-        className="px-4 py-2 rounded border-2 transition"
-        style={{ 
-          borderColor: nftTraits.uiTheme.primary, 
-          color: nftTraits.uiTheme.primary 
-        }}
-      >
-        Next Level
-      </button>
-    )}
-    <button
-      onClick={() => {
-        // Replay current level
-        resetGame(currentLevel);
-      }}
-      className="px-4 py-2 rounded border-2 transition"
+const GameWonOverlay = () => (
+  <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+    <div 
+      className="bg-opacity-90 p-8 rounded-lg text-center"
       style={{ 
-        borderColor: nftTraits.uiTheme.primary, 
-        color: nftTraits.uiTheme.primary 
+        backgroundColor: nftTraits.uiTheme.bg, 
+        borderColor: nftTraits.uiTheme.primary 
       }}
     >
-      Play Again
-    </button>
-  </div>
+      <h2 
+        className="text-2xl font-bold mb-4" 
+        style={{ color: nftTraits.uiTheme.primary }}
+      >
+        Level Completed!
+      </h2>
+      <p className="mb-4" style={{ color: nftTraits.uiTheme.text }}>
+        Time: {currentTime}s | Moves: {moveCount}
+      </p>
+      
+      {/* Prompt to save progress */}
+      {!saving && !savingError && ownsToken && (
+        <div className="mb-4">
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+            Would you like to save your progress to the blockchain?
+          </p>
+          <div className="flex justify-center space-x-4">
+            <Button 
+              onClick={handleSaveProgress}
+              className="bg-teal-600 hover:bg-teal-700 text-white"
+            >
+              Save Progress
+            </Button>
+
+          </div>
+        </div>
+      )}
+      
+      {/* Saving progress state */}
+      {saving ? (
+        <div className="flex items-center justify-center mb-4" style={{ color: nftTraits.uiTheme.text }}>
+          <Loader2 className="animate-spin mr-2" />
+          Saving progress to blockchain...
+        </div>
+      ) : savingError ? (
+        <div className="text-red-500 mb-4">
+          Error saving: {savingError}
+          <Button 
+            onClick={() => {
+              setSavingError(null);
+              // Optional: retry saving
+              handleSaveProgress();
+            }}
+            className="ml-2"
+          >
+            Retry
+          </Button>
+        </div>
+      ) : null}
+      
+      {/* Level navigation buttons */}
+      <div className="flex justify-center space-x-4">
+        {currentLevel < 3 && (
+          <Button
+            onClick={() => {
+              const nextLevel = currentLevel + 1;
+              const url = new URL(window.location.href);
+              url.searchParams.set('level', nextLevel.toString());
+              window.history.replaceState({}, '', url.toString());
+              
+              resetGame(nextLevel);
+            }}
+            variant="outline"
+            disabled={saving || isSavingBlocked}
+          >
+            Next Level
+          </Button>
+        )}
+        <Button
+          variant="outline"
+          onClick={() => resetGame(currentLevel)}
+          disabled={saving || isSavingBlocked}
+        >
+          Play Again
+        </Button>
       </div>
     </div>
-  );
+  </div>
+);
 
   // Ownership validation overlay
   const OwnershipValidationOverlay = () => (
@@ -716,22 +756,7 @@ useEffect(() => {
       </h1>
 
       {/* Network Warning */}
-      {wallet.isConnected && !wallet.isCorrectNetwork && (
-        <Alert variant="warning" className="mb-4 max-w-2xl">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            Please switch to Base network to play this game and save your progress.
-            <Button 
-              onClick={switchNetwork} 
-              size="sm" 
-              variant="outline"
-              className="ml-4"
-            >
-              Switch Network
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
+
 
       {/* Wallet connection status */}
       {!wallet.isConnected && (
