@@ -13,14 +13,14 @@ export const NETWORK_CONFIG = {
   mainnet: {
     chainId: '0x2105',  // Base Mainnet
     name: 'Base',
-    contractAddress: '0x0000000000000000000000000000000000000000', // Replace with mainnet contract after deployment
+    contractAddress: '0x1C1A06210cC1760335bB5906Ef23eE793465ad8B', // Replace with mainnet contract after deployment
     rpcUrl: 'https://mainnet.base.org',
     explorer: 'https://basescan.org'
   }
 };
 
 // Configure which network is active
-export const ACTIVE_NETWORK = 'testnet'; // Change to 'mainnet' after deployment
+export const ACTIVE_NETWORK = 'mainnet'; // Change to 'mainnet' after deployment
 
 // Export active contract address and chain ID
 export const MAZE_CONTRACT_ADDRESS = NETWORK_CONFIG[ACTIVE_NETWORK].contractAddress;

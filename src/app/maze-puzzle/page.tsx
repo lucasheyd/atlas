@@ -11,10 +11,9 @@ import { ethers } from 'ethers';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MyMazeCollection } from "@/components/MyMazeCollection";
 
-// Base Sepolia contract address
-const MAZE_CONTRACT_ADDRESS = '0x9511Aef4586D10CFaa3180896bCb2B6dBdBd4f9e';
-// Base network chain ID (for testing we use Base Sepolia)
-const BASE_CHAIN_ID = '0x14a34'; // Base Sepolia
+const MAZE_CONTRACT_ADDRESS = '0x1C1A06210cC1760335bB5906Ef23eE793465ad8B';
+
+const BASE_CHAIN_ID = '0x2105'; // Base Sepolia
 
 export default function MazePuzzlePage() {
   const [isConnected, setIsConnected] = useState(false);
@@ -108,8 +107,8 @@ export default function MazePuzzlePage() {
                     chainId: BASE_CHAIN_ID,
                     chainName: 'Base Sepolia',
                     nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-                    rpcUrls: ['https://sepolia.base.org'],
-                    blockExplorerUrls: ['https://sepolia.basescan.org']
+                    rpcUrls: ['https://mainnet.base.org'],
+                    blockExplorerUrls: ['https://basescan.org']
                   }]
                 });
                 setIsCorrectNetwork(true);
@@ -206,7 +205,7 @@ export default function MazePuzzlePage() {
                     <Alert variant="warning" className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800/30">
                       <AlertTriangle className="h-4 w-4" />
                       <AlertDescription>
-                        Please switch to Base Sepolia network to mint
+                        Please switch to Base network to mint
                       </AlertDescription>
                     </Alert>
                     <Button 
