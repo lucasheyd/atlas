@@ -176,91 +176,9 @@ export const MyMazeCollection = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 md:mb-0">
           Your Maze Puzzle Collection
-        </h2>
-        
-        {isConnected ? (
-          <Button 
-            variant="outline" 
-            onClick={fetchUserNFTs} 
-            disabled={loading}
-            className="w-full md:w-auto"
-          >
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Refresh Collection
-          </Button>
-        ) : demoMode ? (
-          <Button 
-            onClick={connectWallet} 
-            className="w-full md:w-auto bg-teal-600 hover:bg-teal-700 text-white"
-          >
-            Connect Wallet for Real NFTs
-          </Button>
-        ) : (
-          <Button 
-            onClick={connectWallet} 
-            className="w-full md:w-auto bg-teal-600 hover:bg-teal-700 text-white"
-          >
-            Connect Wallet
-          </Button>
-        )}
+        </h2>   
       </div>
-      
-      {/* Demo Mode Indicator */}
-      {demoMode && (
-        <Alert className="mb-6 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/30">
-          <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          <AlertDescription className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-            <span className="text-blue-800 dark:text-blue-200">You're viewing demo NFTs. These are not real and just for preview.</span>
-            {!isConnected && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={connectWallet}
-                className="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 border-blue-300 dark:border-blue-700"
-              >
-                Connect Wallet
-              </Button>
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {/* Network Warning */}
-      {networkWarning && !demoMode && (
-        <Alert variant="warning" className="mb-6 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800/30">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-            <span>{networkWarning}</span>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleSwitchNetwork}
-              className="bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 border-yellow-300 dark:border-yellow-700 hover:bg-yellow-200 dark:hover:bg-yellow-900/60"
-            >
-              Switch to {NETWORK_CONFIG[ACTIVE_NETWORK].name}
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {/* Error Message */}
-      {error && !demoMode && (
-        <div className="p-4 mb-6 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 rounded-lg border border-red-200 dark:border-red-800/30">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>{error}</div>
-            {!demoMode && (
-              <Button 
-                onClick={showDemoNFTs}
-                size="sm"
-                className="bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-200 border border-red-300 dark:border-red-700"
-              >
-                View Demo NFTs
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-      
+
       {/* NFT Display */}
       {!loading ? (
         nfts.length > 0 ? (
@@ -350,20 +268,6 @@ export const MyMazeCollection = () => {
           <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
             <div className="text-gray-500 dark:text-gray-400 mb-4">
               Connect your wallet to view your Maze Puzzle NFTs
-            </div>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                onClick={connectWallet}
-                className="bg-teal-600 hover:bg-teal-700 text-white"
-              >
-                Connect Wallet
-              </Button>
-              <Button 
-                onClick={showDemoNFTs}
-                variant="outline"
-              >
-                View Demo NFTs
-              </Button>
             </div>
           </div>
         ) : (

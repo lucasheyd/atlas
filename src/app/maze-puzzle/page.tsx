@@ -13,7 +13,7 @@ import { MyMazeCollection } from "@/components/MyMazeCollection";
 
 const MAZE_CONTRACT_ADDRESS = '0x1C1A06210cC1760335bB5906Ef23eE793465ad8B';
 
-const BASE_CHAIN_ID = '0x2105'; // Base Sepolia
+const BASE_CHAIN_ID = '0x2105';
 
 export default function MazePuzzlePage() {
   const [isConnected, setIsConnected] = useState(false);
