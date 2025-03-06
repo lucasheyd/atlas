@@ -258,50 +258,73 @@ export default function Home() {
       {/* Bot Hero Section */}
       <BotHeroSection />
       
-      {/* Video Section */}
-      <section className="py-20 bg-white dark:bg-gray-900">
-        <Container>
-          <SectionTitle
-            preTitle="Watch"
-            title="See Our NFT Collections in Action"
-          >
-            <div className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-12">
-              Watch our demonstration videos to understand how our NFTs work
-              and what makes them unique in the blockchain space.
-            </div>
-          </SectionTitle>
+    <section className="py-20 bg-white dark:bg-gray-900">
+  <Container>
+    <SectionTitle
+      preTitle="Watch"
+      title="See Our NFT Collections in Action"
+    >
+      <div className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-12">
+        Watch our demonstration videos to understand how our NFTs work
+        and what makes them unique in the blockchain space.
+      </div>
+    </SectionTitle>
+    <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+      {/* Lunar Chronicles Video */}
+      <div className="flex flex-col">
+        <Video 
+          videoPath="/Moonphase.mp4" 
+          title="Lunar Chronicles Demo"
+          autoPlay={true}
+          muted={true}
+          loop={true}
+        />
+        <div className="mt-4 text-center">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Lunar Chronicles</h3>
+          <p className="text-gray-600 dark:text-gray-300">
+            Each Token changes its image automatically based on the current moon phase.
+          </p>
+        </div>
+      </div>
+      
+      {/* Fractal Swarm Video */}
+      <div className="flex flex-col">
+        <Video 
+          videoPath="/FractalSwarm.mp4" 
+          title="Fractal Swarm Demo"
+          autoPlay={true}
+          muted={true}
+          loop={true}
+        />
+        <div className="mt-4 text-center">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Fractal Swarm Demo</h3>
+          <p className="text-gray-600 dark:text-gray-300">
+            Interactive particle-based fractal art with over 2 million unique combinations.
+          </p>
+        </div>
+      </div>
+      
+      {/* Murmuration Video */}
+      <div className="flex flex-col">
+        <Video 
+          videoPath="/murmuration.mp4"
+          title="Murmuration 666"
+          autoPlay={true}
+          muted={true}
+          loop={true}
+        />
+        <div className="mt-4 text-center">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Murmuration 666</h3>
+          <p className="text-gray-600 dark:text-gray-300">
+            Witness the breathtaking beauty of our simulated flocking behaviors collection.
+          </p>
+        </div>
+      </div>
+    </div>
+  </Container>
+</section>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {/* Lunar Chronicles Video Placeholder */}
 
-            <div className="flex flex-col">
-              <Video 
-                videoPath="/FractalSwarm.mp4" 
-                title="Fractal Swarm Demo"
-              />
-              <div className="mt-4 text-center">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Fractal Swarm Demo</h3>
-                <p className="text-gray-600 dark:text-gray-300">
-                  Interactive particle-based fractal art with over 2 million unique combinations.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col">
-              <Video 
-                videoPath="/murmuration.mp4"
-                title="Murmuration 666"
-              />
-              <div className="mt-4 text-center">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Murmuration 666</h3>
-                <p className="text-gray-600 dark:text-gray-300">
-                  Witness the breathtaking beauty of our simulated flocking behaviors collection.
-                </p>
-              </div>
-            </div>
-          </div>
-        </Container>
-      </section>
       
       {/* FAQ Section */}
       <Faq />

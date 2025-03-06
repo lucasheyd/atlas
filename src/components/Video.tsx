@@ -1,20 +1,31 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface VideoProps {
   videoId?: string;
   videoPath?: string;
   title?: string;
+  autoPlay?: boolean;
 }
 
-export function Video({ videoId, videoPath, title }: VideoProps) {
-  const [playVideo, setPlayVideo] = useState(false);
+export function Video({ videoId, videoPath, title, autoPlay = true }: VideoProps) {
+  const [playVideo, setPlayVideo] = useState(autoPlay);
 
   // Determina se é um vídeo do YouTube ou local
   const isYouTube = videoId && !videoPath;
   
+  // Automatically play video if autoPlay is true
+  useEffect(() => {
+    if (autoPlay) {
+      setPlayVideo(true);
+    }
+  }, [autoPlay]);
+
   return (
-    <div className="relative w-full h-[500px] overflow-hidden lg:mb-10 rounded-2xl bg-gradient-to-tr from-purple-400 to-indigo-700 cursor-pointer">
+    <div 
+      className="relative w-full h-[500px] overflow-hidden lg:mb-10 rounded-2xl bg-gradient-to-tr from-purple-400 to-indigo-700 cursor-pointer"
+      onClick={() => setPlayVideo(true)}
+    >
       {!playVideo && (
         <button
           onClick={() => setPlayVideo(true)}
@@ -39,7 +50,7 @@ export function Video({ videoId, videoPath, title }: VideoProps) {
         <>
           {isYouTube ? (
             <iframe
-              src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+              src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1`}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
               className="absolute inset-0 w-full h-full"
@@ -47,8 +58,10 @@ export function Video({ videoId, videoPath, title }: VideoProps) {
           ) : (
             <video
               src={videoPath}
-              controls
               autoPlay
+              muted
+              loop
+              playsInline
               className="w-full h-full object-cover"
             >
               Your browser does not support the video tag.
