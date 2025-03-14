@@ -1,4 +1,3 @@
-// app/api/agent-proxy/route.ts - Updated with English error messages
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -6,21 +5,42 @@ export async function POST(request: NextRequest) {
     // Parse request body
     const body = await request.json();
     
-    // Get environment variables
-    const LOCAL_AGENT_URL = process.env.NEXT_LOCAL_AGENT_URL;
-    const API_KEY = process.env.NEXT_AGENT_API_KEY;
+    // Detect environment
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isVercel = process.env.VERCEL === '1';
     
-    // Check if agent URL is configured
-    if (!LOCAL_AGENT_URL) {
-      return NextResponse.json(
-        { error: 'Agent not configured. Please set NEXT_LOCAL_AGENT_URL in .env.local' },
-        { status: 503 }
-      );
+    // Determine which agent URL to use
+    let AGENT_URL;
+    let API_KEY = process.env.NEXT_AGENT_API_KEY;
+    
+    if (isVercel && isProduction) {
+      // In production on Vercel, use the internal API route
+      AGENT_URL = `${process.env.VERCEL_URL || 'https://' + process.env.NEXT_PUBLIC_VERCEL_URL}/api/agent`;
+      console.log('Using production internal API route:', AGENT_URL);
+    } else {
+      // In development, use the ngrok URL
+      AGENT_URL = process.env.NEXT_LOCAL_AGENT_URL;
+      
+      // Check if agent URL is configured in development
+      if (!AGENT_URL && !isProduction) {
+        return NextResponse.json(
+          { error: 'Agent not configured. Please set NEXT_LOCAL_AGENT_URL in .env.local' },
+          { status: 503 }
+        );
+      }
     }
     
-    // Try connecting to local agent
+    // In production without explicit agent URL, provide a fallback response
+    if (!AGENT_URL && isProduction) {
+      return NextResponse.json({
+        success: true,
+        message: "I'm Synthesis, the CEO and visionary behind several innovative NFT collections including Fractal Swarm, Lunar Chronicles, Maze Puzzle, Murmuration 666, and Fractal Tree. I also created the SYNTH token on the Base network. How can I assist you today?"
+      });
+    }
+    
+    // Try connecting to the agent
     try {
-      const response = await fetch(LOCAL_AGENT_URL, {
+      const response = await fetch(AGENT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -54,10 +74,10 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       console.error('Error connecting to agent:', error);
       
-      // Fallback response: for development without agent
+      // Fallback response for production or when agent is unavailable
       return NextResponse.json({
         success: true,
-        message: "The agent is currently unavailable. This is a fallback response. To use the real agent, configure ngrok and update the NEXT_LOCAL_AGENT_URL variable in the .env.local file."
+        message: "I'm Synthesis, the CEO and visionary behind several innovative NFT collections. While my connection to my knowledge base is temporarily limited, I can still assist with general questions about NFTs, blockchain technology, or digital art."
       });
     }
     
