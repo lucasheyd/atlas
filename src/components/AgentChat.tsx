@@ -14,6 +14,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Bot, Send, Loader2, Maximize2, Minimize2, RefreshCw, Lock, Unlock } from 'lucide-react';
 import { useWallet } from '@/components/WalletConnect';
+import { 
+  Message, 
+  loadConversation, 
+  saveConversation, 
+  clearConversation 
+} from '@/services/conversationStorage';
 
 export default function AgentChat() {
   const [messages, setMessages] = useState<Message[]>([
@@ -28,6 +34,7 @@ export default function AgentChat() {
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogMessage, setDialogMessage] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -50,15 +57,94 @@ export default function AgentChat() {
     }
   }, [messages, loading]);
 
-  // Function to clear the conversation
-  const clearConversation = () => {
-    setMessages([
-      { 
-        role: 'assistant', 
-        content: 'I\'ve cleared our conversation. How can I help you today?',
-        timestamp: Date.now()
+  // Load conversation when wallet is connected
+  useEffect(() => {
+    const loadUserConversation = async () => {
+      if (isConnected && address) {
+        try {
+          const savedMessages = await loadConversation(address);
+          
+          if (savedMessages && savedMessages.length > 0) {
+            console.log(`Loaded ${savedMessages.length} messages for ${address}`);
+            setMessages(savedMessages);
+          } else {
+            // If no saved messages, add initial greeting
+            setMessages([
+              { 
+                role: 'assistant', 
+                content: 'Hello! I\'m Synthesis. I can help with your NFT projects, marketing strategies, and blockchain development. How can I assist you today?',
+                timestamp: Date.now()
+              }
+            ]);
+          }
+        } catch (error) {
+          console.error('Error loading conversation:', error);
+          // Fallback to initial message
+          setMessages([
+            { 
+              role: 'assistant', 
+              content: 'Hello! I\'m Synthesis. I can help with your NFT projects, marketing strategies, and blockchain development. How can I assist you today?',
+              timestamp: Date.now()
+            }
+          ]);
+        }
+      } else if (!isConnected) {
+        // When disconnected, show message asking to connect wallet
+        setMessages([
+          { 
+            role: 'assistant', 
+            content: 'Please connect your wallet to start or continue a conversation with me. Your chat history will be saved and associated with your wallet address.',
+            timestamp: Date.now()
+          }
+        ]);
       }
-    ]);
+    };
+
+    loadUserConversation();
+  }, [isConnected, address]);
+
+  // Auto-save conversation when messages change
+  useEffect(() => {
+    const saveUserConversation = async () => {
+      if (isConnected && address && messages.length > 0) {
+        setIsSaving(true);
+        try {
+          await saveConversation(address, messages);
+        } catch (error) {
+          console.error('Error auto-saving conversation:', error);
+        } finally {
+          setIsSaving(false);
+        }
+      }
+    };
+
+    // Only save if there's more than the initial greeting
+    if (messages.length > 1) {
+      saveUserConversation();
+    }
+  }, [messages, isConnected, address]);
+
+  // Function to clear the conversation
+  const clearUserConversation = async () => {
+    if (isConnected && address) {
+      try {
+        await clearConversation(address);
+        setMessages([
+          { 
+            role: 'assistant', 
+            content: 'I\'ve cleared our conversation history. How can I help you today?',
+            timestamp: Date.now()
+          }
+        ]);
+      } catch (error) {
+        console.error('Error clearing conversation:', error);
+        setDialogMessage('Failed to clear conversation. Please try again.');
+        setOpenDialog(true);
+      }
+    } else {
+      setDialogMessage('Please connect your wallet first.');
+      setOpenDialog(true);
+    }
   };
 
   // Send message to agent
@@ -69,7 +155,7 @@ export default function AgentChat() {
     
     // Check if wallet is connected
     if (!isConnected || !address) {
-      setDialogMessage('Please connect your wallet using the button in the top right to chat.');
+      setDialogMessage('Please connect your wallet to chat with the agent.');
       setOpenDialog(true);
       return;
     }
@@ -104,14 +190,13 @@ export default function AgentChat() {
       
       if (response.ok) {
         // Add agent response to chat
-        setMessages(prev => [
-          ...prev, 
-          { 
-            role: 'assistant', 
-            content: data.message || 'I didn\'t understand your request.',
-            timestamp: Date.now()
-          }
-        ]);
+        const agentResponse = {
+          role: 'assistant', 
+          content: data.message || 'I didn\'t understand your request.',
+          timestamp: Date.now()
+        };
+        
+        setMessages(prev => [...prev, agentResponse]);
       } else {
         setDialogMessage(`Error: ${data.error || 'Something went wrong'}`);
         setOpenDialog(true);
@@ -149,15 +234,20 @@ export default function AgentChat() {
             <div>
               <h3 className="font-bold text-xl">Synthesis Agent</h3>
               <div className="text-xs opacity-75 flex items-center gap-1">
-                {isConnected ? (
+                {isSaving ? (
+                  <>
+                    <RefreshCw size={12} className="animate-spin" />
+                    <span>Saving conversation...</span>
+                  </>
+                ) : isConnected ? (
                   <>
                     <Lock size={12} />
-                    <span>Connected as {address?.substring(0, 6)}...{address?.substring(address.length - 4)}</span>
+                    <span>Chat linked to {address?.substring(0, 6)}...{address?.substring(address.length - 4)}</span>
                   </>
                 ) : (
                   <>
                     <Unlock size={12} />
-                    <span>Connect wallet to personalize</span>
+                    <span>Connect wallet to save conversation</span>
                   </>
                 )}
               </div>
@@ -167,7 +257,7 @@ export default function AgentChat() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={clearConversation}
+              onClick={clearUserConversation}
               className="text-white hover:bg-white/10"
               title="Clear conversation"
             >
@@ -230,7 +320,7 @@ export default function AgentChat() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              disabled={loading}
+              disabled={loading || !isConnected}
               placeholder={isConnected ? "Type your message..." : "Connect wallet to chat..."}
               className="flex-1 border-indigo-200 dark:border-indigo-800/30 focus-visible:ring-indigo-500"
             />

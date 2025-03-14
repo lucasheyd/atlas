@@ -1,14 +1,11 @@
-// app/agent/page.tsx
+"use client";
+
 import React from 'react';
 import { Container } from '@/components/Container';
 import { SectionTitle } from '@/components/SectionTitle';
 import { Bot, Sparkles, LineChart, PenTool, Palette, Layers } from 'lucide-react';
-import dynamic from 'next/dynamic';
 import { WalletProvider } from '@/components/WalletConnect';
-
-// Importar componentes dinamicamente para evitar erros de SSR com window.ethereum
-const AgentChatWrapper = dynamic(() => import('./AgentChatWrapper'), { ssr: false });
-const ConnectWalletButton = dynamic(() => import('@/components/WalletConnect').then(mod => mod.ConnectWalletButton), { ssr: false });
+import AgentChatWrapper from './AgentChatWrapper';
 
 export default function AgentPage() {
   return (
@@ -20,17 +17,9 @@ export default function AgentPage() {
               preTitle="AI CEO/Artist"
               title="Your intelligent NFT advisor">
               Chat with our specialized assistant to get insights about NFTs, 
-              blockchain, and digital art. Your conversations are securely stored 
-              and linked to your wallet address.
+              blockchain, and digital art. Get personalized recommendations 
+              tailored to your interests.
             </SectionTitle>
-            
-            <div className="hidden md:block">
-              <ConnectWalletButton />
-            </div>
-          </div>
-          
-          <div className="md:hidden mb-6 flex justify-center">
-            <ConnectWalletButton />
           </div>
           
           <div className="max-w-4xl mx-auto mt-8">

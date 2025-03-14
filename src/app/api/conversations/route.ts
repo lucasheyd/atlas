@@ -1,19 +1,20 @@
 // app/api/conversations/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { handleConversationRequest, Message } from '@/services/conversationStorage';
+import { 
+  handleConversationRequest, 
+  Message 
+} from '@/services/conversationStorage';
 
-// Verificação básica de autenticação para proteção do endpoint
+// Verify wallet address format
 function isValidAddress(address: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(address);
 }
 
 export async function GET(request: NextRequest) {
   try {
-    // Obter o endereço da carteira da query string
     const { searchParams } = new URL(request.url);
     const walletAddress = searchParams.get('address');
 
-    // Verificar se o endereço foi fornecido e é válido
     if (!walletAddress) {
       return NextResponse.json(
         { success: false, error: 'Wallet address is required' },
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Carregar conversas para o endereço específico
+    // Use the handleConversationRequest to load conversation
     const result = await handleConversationRequest(walletAddress, 'load');
     return NextResponse.json(result);
   } catch (error) {
@@ -42,11 +43,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Extrair dados do corpo da solicitação
+    // Extract data from request body
     const body = await request.json();
     const { walletAddress, action, messages } = body;
 
-    // Validar parâmetros
+    // Validate parameters
     if (!walletAddress || !action) {
       return NextResponse.json(
         { success: false, error: 'Wallet address and action are required' },
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Processar a solicitação
+    // Process the request
     const result = await handleConversationRequest(
       walletAddress,
       action as 'load' | 'save' | 'clear',
@@ -92,14 +93,14 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Endpoint para limpar a conversa (método DELETE)
+// Endpoint to clear the conversation (DELETE method)
 export async function DELETE(request: NextRequest) {
   try {
-    // Obter o endereço da carteira da query string
+    // Get wallet address from query string
     const { searchParams } = new URL(request.url);
     const walletAddress = searchParams.get('address');
 
-    // Verificar se o endereço foi fornecido e é válido
+    // Check if address was provided and is valid
     if (!walletAddress) {
       return NextResponse.json(
         { success: false, error: 'Wallet address is required' },
@@ -114,7 +115,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Limpar a conversa para o endereço específico
+    // Clear conversation for specific address
     const result = await handleConversationRequest(walletAddress, 'clear');
     return NextResponse.json(result);
   } catch (error) {
