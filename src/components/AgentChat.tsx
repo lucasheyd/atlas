@@ -14,24 +14,28 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Bot, Send, Loader2, Maximize2, Minimize2, RefreshCw, Lock, Unlock } from 'lucide-react';
 import { useWallet } from '@/components/WalletConnect';
-import { Message, loadConversation, saveConversation } from '@/services/conversationStorage';
 
 export default function AgentChat() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([
+    { 
+      role: 'assistant', 
+      content: 'Hello! I\'m Synthesis. I can help with your NFT projects, marketing strategies, and blockchain development. Connect your wallet to start chatting.',
+      timestamp: Date.now()
+    }
+  ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogMessage, setDialogMessage] = useState('');
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   
-  // Obter o estado da carteira do contexto
+  // Get wallet state
   const { address, isConnected } = useWallet();
 
-  // Auto-scroll quando novas mensagens chegam
+  // Auto-scroll when new messages arrive
   useEffect(() => {
     if (messagesEndRef.current) {
       const messagesContainer = messagesContainerRef.current;
@@ -40,99 +44,32 @@ export default function AgentChat() {
       }
     }
     
-    // Devolver o foco ao input depois que o bot responde
+    // Refocus input after bot responds
     if (!loading && messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
       inputRef.current?.focus();
     }
   }, [messages, loading]);
 
-  // Carregar conversa quando o usuário conecta a carteira
-  useEffect(() => {
-    const loadUserConversation = async () => {
-      if (isConnected && address) {
-        try {
-          const savedMessages = await loadConversation(address);
-          
-          if (savedMessages && savedMessages.length > 0) {
-            console.log(`Loaded ${savedMessages.length} messages for ${address}`);
-            setMessages(savedMessages);
-          } else {
-            // Se não houver mensagens salvas, adicionar a saudação inicial
-            setMessages([
-              { 
-                role: 'assistant', 
-                content: 'Hello! I\'m Synthesis. I can help with your NFT projects, marketing strategies, and blockchain development. How can I assist you today?',
-                timestamp: Date.now()
-              }
-            ]);
-          }
-        } catch (error) {
-          console.error('Error loading conversation:', error);
-          // Fallback para mensagem inicial em caso de erro
-          setMessages([
-            { 
-              role: 'assistant', 
-              content: 'Hello! I\'m Synthesis. I can help with your NFT projects, marketing strategies, and blockchain development. How can I assist you today?',
-              timestamp: Date.now()
-            }
-          ]);
-        }
-      } else if (!isConnected) {
-        // Quando desconectado, mostrar uma mensagem pedindo para conectar a carteira
-        setMessages([
-          { 
-            role: 'assistant', 
-            content: 'Please connect your wallet to start or continue a conversation with me. Your chat history will be saved and associated with your wallet address.',
-            timestamp: Date.now()
-          }
-        ]);
-      }
-    };
-
-    loadUserConversation();
-  }, [isConnected, address]);
-
-  // Salvar conversa automaticamente quando as mensagens mudam
-  useEffect(() => {
-    const saveUserConversation = async () => {
-      if (isConnected && address && messages.length > 0) {
-        setIsSaving(true);
-        try {
-          await saveConversation(address, messages);
-        } catch (error) {
-          console.error('Error auto-saving conversation:', error);
-        } finally {
-          setIsSaving(false);
-        }
-      }
-    };
-
-    // Apenas salvar se houver pelo menos uma troca de mensagens (não apenas a saudação)
-    if (messages.length > 1) {
-      saveUserConversation();
-    }
-  }, [messages, isConnected, address]);
-
-  // Função para limpar a conversa
+  // Function to clear the conversation
   const clearConversation = () => {
     setMessages([
       { 
         role: 'assistant', 
-        content: 'I\'ve cleared our conversation history. How can I help you today?',
+        content: 'I\'ve cleared our conversation. How can I help you today?',
         timestamp: Date.now()
       }
     ]);
   };
 
-  // Enviar mensagem ao agente
+  // Send message to agent
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!input.trim()) return;
     
-    // Verificar se o usuário está conectado
+    // Check if wallet is connected
     if (!isConnected || !address) {
-      setDialogMessage('Please connect your wallet to chat with the agent.');
+      setDialogMessage('Please connect your wallet using the button in the top right to chat.');
       setOpenDialog(true);
       return;
     }
@@ -140,7 +77,7 @@ export default function AgentChat() {
     const userMessage = input;
     setInput('');
     
-    // Adicionar mensagem do usuário ao chat
+    // Add user message to chat
     const updatedMessages = [
       ...messages, 
       { role: 'user', content: userMessage, timestamp: Date.now() }
@@ -149,27 +86,24 @@ export default function AgentChat() {
     setLoading(true);
 
     try {
-      // Chamada da API para o proxy do agente
+      // API call to agent proxy
       const response = await fetch('/api/agent-proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Wallet-Address': address, // Incluir o endereço da carteira nos headers
+          'X-Wallet-Address': address,
         },
         body: JSON.stringify({ 
           message: userMessage,
-          walletAddress: address, // Incluir também no corpo para que o agente saiba quem está perguntando
-          history: updatedMessages.slice(-8) // Enviar as últimas 8 mensagens para contexto
+          walletAddress: address,
+          history: updatedMessages.slice(-8) // Send last 8 messages for context
         }),
       });
 
-      console.log('Response status:', response.status);
-      
       const data = await response.json();
-      console.log('Response data received');
       
       if (response.ok) {
-        // Adicionar resposta ao chat
+        // Add agent response to chat
         setMessages(prev => [
           ...prev, 
           { 
@@ -188,7 +122,7 @@ export default function AgentChat() {
       setOpenDialog(true);
     } finally {
       setLoading(false);
-      // Focar de volta no input depois de enviar
+      // Refocus input
       setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
@@ -199,7 +133,7 @@ export default function AgentChat() {
     setIsExpanded(!isExpanded);
   };
 
-  // Calcular altura do chat com base no estado expandido
+  // Calculate chat height based on expanded state
   const chatHeight = isExpanded ? 'h-[85vh]' : 'h-[70vh]';
 
   return (
@@ -215,20 +149,15 @@ export default function AgentChat() {
             <div>
               <h3 className="font-bold text-xl">Synthesis Agent</h3>
               <div className="text-xs opacity-75 flex items-center gap-1">
-                {isSaving ? (
-                  <>
-                    <RefreshCw size={12} className="animate-spin" />
-                    <span>Saving conversation...</span>
-                  </>
-                ) : isConnected ? (
+                {isConnected ? (
                   <>
                     <Lock size={12} />
-                    <span>Chat linked to {address?.substring(0, 6)}...{address?.substring(address.length - 4)}</span>
+                    <span>Connected as {address?.substring(0, 6)}...{address?.substring(address.length - 4)}</span>
                   </>
                 ) : (
                   <>
                     <Unlock size={12} />
-                    <span>Connect wallet to save conversation</span>
+                    <span>Connect wallet to personalize</span>
                   </>
                 )}
               </div>
@@ -301,7 +230,7 @@ export default function AgentChat() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              disabled={loading || !isConnected}
+              disabled={loading}
               placeholder={isConnected ? "Type your message..." : "Connect wallet to chat..."}
               className="flex-1 border-indigo-200 dark:border-indigo-800/30 focus-visible:ring-indigo-500"
             />
