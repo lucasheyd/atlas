@@ -4,13 +4,5 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "regions": ["cdg1"],
-  "outputDirectory": ".next",
-  "env": {
-    "NEXT_PUBLIC_VERCEL_URL": {
-      "type": "system"
-    },
-    "EDGE_CONFIG": {
-      "type": "sensitive"
-    }
-  }
+  "outputDirectory": ".next"
 }
