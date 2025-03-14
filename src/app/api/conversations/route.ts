@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { 
   handleConversationRequest, 
   Message 
-} from '@/services/conversationStorage';
+} from '../../../services/conversationStorage';
 
 // Verify wallet address format
 function isValidAddress(address: string): boolean {

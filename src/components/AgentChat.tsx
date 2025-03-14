@@ -19,7 +19,7 @@ import {
   loadConversation, 
   saveConversation, 
   clearConversation 
-} from '../../services/conversationStorage';
+} from '../services/conversationStorage';
 
 export default function AgentChat() {
   const [messages, setMessages] = useState<Message[]>([
