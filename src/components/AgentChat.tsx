@@ -197,22 +197,52 @@ export default function AgentChat() {
         };
         
         setMessages(prev => [...prev, agentResponse]);
-      } else {
-        setDialogMessage(`Error: ${data.error || 'Something went wrong'}`);
+      }else if (data.retryAvailable) {
+      // Tentar novamente uma vez
+      try {
+        const retryResponse = await fetch('/api/agent-proxy', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Wallet-Address': address,
+          },
+          body: JSON.stringify({ 
+            message: userMessage,
+            walletAddress: address,
+            history: updatedMessages.slice(-8)
+          }),
+        });
+
+        const retryData = await retryResponse.json();
+
+        if (retryResponse.ok) {
+          setMessages(prev => [
+            ...prev, 
+            { 
+              role: 'assistant', 
+              content: retryData.message || 'I didn\'t understand your request.',
+              timestamp: Date.now()
+            }
+          ]);
+        } else {
+          throw new Error('Retry failed');
+        }
+      } catch (retryError) {
+        setDialogMessage('The agent is persistently unavailable. Please try again later.');
         setOpenDialog(true);
       }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      setDialogMessage('The agent is offline or inaccessible at the moment. Please try again later.');
+    } else {
+      setDialogMessage(`Error: ${data.error || 'Something went wrong'}`);
       setOpenDialog(true);
-    } finally {
-      setLoading(false);
-      // Refocus input
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
     }
-  };
+  } catch (error) {
+    console.error('Error sending message:', error);
+    setDialogMessage('The agent is offline or inaccessible at the moment. Please try again later.');
+    setOpenDialog(true);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);

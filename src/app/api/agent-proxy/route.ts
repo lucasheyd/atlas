@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           error: 'Agent not configured. Please set NEXT_LOCAL_AGENT_URL in Vercel environment variables.',
-          details: 'The deployment is missing the required environment variable to connect to the agent.'
+          details: 'The deployment is missing the required environment variable to connect to the agent.',
+          retryAvailable: false
         },
         { status: 503 }
       );
@@ -34,19 +35,26 @@ export async function POST(request: NextRequest) {
     
     console.log('🌐 Attempting to connect to agent at:', LOCAL_AGENT_URL);
     
+    // Configurar um timeout mais robusto
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos
+
     // Try connecting to local agent with detailed error handling
     try {
       const response = await fetch(LOCAL_AGENT_URL, {
         method: 'POST',
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
           ...(API_KEY && { 'Authorization': `Bearer ${API_KEY}` }),
           // Add a custom header for tracking
-          'X-Agent-Request-Source': 'vercel-proxy'
+          'X-Agent-Request-Source': 'vercel-proxy',
+          'X-Timeout': '10000' // Informar timeout no header
         },
         body: JSON.stringify(body),
       });
       
+      clearTimeout(timeoutId);
       console.log('📡 Agent response status:', response.status);
       
       // If agent is not available
@@ -60,7 +68,8 @@ export async function POST(request: NextRequest) {
           return NextResponse.json(
             { 
               error: errorData.error || 'Failed to connect to agent',
-              details: 'The agent returned an error response.'
+              details: 'The agent returned an error response.',
+              retryAvailable: true
             },
             { status: response.status }
           );
@@ -70,7 +79,8 @@ export async function POST(request: NextRequest) {
           return NextResponse.json(
             { 
               error: 'Failed to connect to agent',
-              details: 'Could not parse the agent error response.'
+              details: 'Could not parse the agent error response.',
+              retryAvailable: true
             },
             { status: response.status }
           );
@@ -83,13 +93,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(data);
       
     } catch (error) {
+      clearTimeout(timeoutId);
       console.error('❌ Connection error:', error);
       console.log('⚠️ Error details:', error.message || 'No error details available');
       
+      // Determine if it's a timeout or other network error
+      const isTimeout = error.name === 'AbortError';
+      
       // More detailed fallback response
       return NextResponse.json({
-        success: true,
-        message: "I'm Synthesis, the CEO and visionary behind several innovative NFT collections. While my connection to my knowledge base is temporarily limited, I can still assist with general questions about NFTs, blockchain technology, or digital art. (Error details: Failed to connect to agent at URL. Please check ngrok configuration and ensure agent is running.)"
+        success: false,
+        message: isTimeout 
+          ? "Sorry, the connection timed out. Please try again." 
+          : "I'm Synthesis, the CEO and visionary behind several innovative NFT collections. While my connection to my knowledge base is temporarily limited, I can still assist with general questions about NFTs, blockchain technology, or digital art.",
+        retryAvailable: true,
+        isTimeout: isTimeout
       });
     }
     
@@ -98,7 +116,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { 
         error: 'Internal server error',
-        details: error.message || 'Unknown error in agent proxy' 
+        details: error.message || 'Unknown error in agent proxy',
+        retryAvailable: false
       },
       { status: 500 }
     );
