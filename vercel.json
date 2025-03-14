@@ -1,7 +1,22 @@
 {
-  "buildCommand": "npm install --production=false && npm run build",
-  "outputDirectory": ".next",
-  "installCommand": "npm install --production=false",
+  "buildCommand": "next build",
+  "devCommand": "next dev",
+  "installCommand": "npm install",
   "framework": "nextjs",
-  "devCommand": "npm run dev"
+  "regions": ["cdg1"],
+  "outputDirectory": ".next",
+  "storage": [
+    {
+      "type": "edge-config",
+      "id": "your-project-name-config"
+    }
+  ],
+  "env": {
+    "NEXT_PUBLIC_VERCEL_URL": {
+      "type": "system"
+    },
+    "EDGE_CONFIG": {
+      "type": "sensitive"
+    }
+  }
 }
