@@ -5,12 +5,6 @@
   "framework": "nextjs",
   "regions": ["cdg1"],
   "outputDirectory": ".next",
-  "storage": [
-    {
-      "type": "edge-config",
-      "id": "your-project-name-config"
-    }
-  ],
   "env": {
     "NEXT_PUBLIC_VERCEL_URL": {
       "type": "system"
