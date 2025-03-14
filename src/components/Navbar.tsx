@@ -15,7 +15,8 @@ import {
   CheckCircle,
   ChevronDown,
   Sparkles,
-  Gamepad2 
+  Gamepad2,
+  Bot 
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -221,6 +222,20 @@ export const Navbar = () => {
                 Explore
               </DropdownMenuLabel>
               <DropdownMenuGroup className="px-1">
+
+<DropdownMenuItem asChild className="rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 cursor-pointer">
+  <Link href="/agent" className="cursor-pointer flex items-center px-3 py-2">
+    <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mr-3 text-purple-600 dark:text-purple-400">
+      <Bot className="h-4 w-4" />
+    </div>
+    <div>
+      <div className="font-medium text-gray-900 dark:text-white">AI Assistant</div>
+      <div className="text-xs text-gray-500 dark:text-gray-400">Intelligent NFT advisor</div>
+    </div>
+  </Link>
+</DropdownMenuItem>
+
+
                 <DropdownMenuItem asChild className="rounded-lg mb-1 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 cursor-pointer">
                   <Link href="/gallery" className="cursor-pointer flex items-center px-3 py-2">
                     <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mr-3 text-amber-600 dark:text-amber-400">
@@ -232,6 +247,7 @@ export const Navbar = () => {
                     </div>
                   </Link>
                 </DropdownMenuItem>
+
                 <DropdownMenuItem asChild className="rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 cursor-pointer">
                   <Link href="/bot" className="cursor-pointer flex items-center px-3 py-2">
                     <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center mr-3 text-indigo-600 dark:text-indigo-400">
@@ -243,6 +259,8 @@ export const Navbar = () => {
                     </div>
                   </Link>
                 </DropdownMenuItem>
+
+
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>

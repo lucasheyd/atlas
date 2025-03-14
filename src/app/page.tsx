@@ -37,59 +37,77 @@ export default function Home() {
             
             {/* Fractal Swarm Card */}
             <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group flex flex-col h-full">
-  <div className="relative h-60 overflow-hidden">
-    <Image 
-      src="/Fractal2.png" 
-      alt="Fractal Swarm Collection"
-      fill
-      className="object-cover group-hover:scale-105 transition-transform duration-500"
-    />
-    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-    <div className="absolute bottom-4 left-4 text-white">
-      <h3 className="text-2xl font-bold">Fractal Swarm</h3>
-      <div className="text-gray-200">Interactive particle simulations</div>
-    </div>
-  </div>
-  <div className="p-6 flex-1 flex flex-col">
-    <div className="flex items-center gap-4 mb-4">
-      <div className="flex items-center">
-        <PenTool size={16} className="text-indigo-500 mr-2" />
-        <span className="text-sm text-gray-600 dark:text-gray-300">12 Styles</span>
-      </div>
-      <div className="flex items-center">
-        <Layers size={16} className="text-indigo-500 mr-2" />
-        <span className="text-sm text-gray-600 dark:text-gray-300">18 Colors</span>
-      </div>
-    </div>
-    <div className="text-gray-600 dark:text-gray-300 mb-6 flex-grow">
-      Dynamic particle-based fractal art with over 2 million unique combinations, 
-      eternally preserved on the blockchain.
-    </div>
-    <Link href="/fractal-swarm" className="mt-auto">
-      <Button className="w-full bg-indigo-600 hover:bg-indigo-700">
-        Explore Fractal Swarm
-      </Button>
-    </Link>
-  </div>
-</div>
+              <div className="relative h-60 overflow-hidden">
+                <Image 
+                  src="/Fractal2.png" 
+                  alt="Fractal Swarm Collection"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                <div className="absolute bottom-4 left-4 text-white">
+                  <h3 className="text-2xl font-bold">Fractal Swarm</h3>
+                  <div className="text-gray-200">Interactive particle simulations</div>
+                </div>
+              </div>
+              <div className="p-6 flex-1 flex flex-col">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="flex items-center">
+                    <PenTool size={16} className="text-indigo-500 mr-2" />
+                    <span className="text-sm text-gray-600 dark:text-gray-300">12 Styles</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Layers size={16} className="text-indigo-500 mr-2" />
+                    <span className="text-sm text-gray-600 dark:text-gray-300">18 Colors</span>
+                  </div>
+                </div>
+                <div className="text-gray-600 dark:text-gray-300 mb-6 flex-grow">
+                  Dynamic particle-based fractal art with over 2 million unique combinations, 
+                  eternally preserved on the blockchain.
+                </div>
+                <div className="flex gap-2">
+                  <Link href="/fractal-swarm" className="flex-1">
+                    <Button className="w-full bg-indigo-600 hover:bg-indigo-700">
+                      Explore Fractal Swarm
+                    </Button>
+                  </Link>
+                  <Link 
+                    href="https://opensea.io/collection/fractalswarmnft" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
+                    <Button 
+                      variant="outline" 
+                      className="p-2 bg-indigo-600 hover:bg-indigo-700 border-indigo-600 flex items-center justify-center"
+                    >
+                      <Image 
+                        src="/icons/openseatransparent.svg" 
+                        alt="OpenSea" 
+                        width={20} 
+                        height={20} 
+                      />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
             
             {/* Fractal Tree Card */}
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group flex flex-col h-full">
               <div className="relative h-60 overflow-hidden bg-gradient-to-br from-emerald-400/20 to-blue-500/20">
                 <Image 
-                      src="/fractaltree2.png" 
-                          alt="FractalTree"
-                         fill
-                     className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-
+                  src="/fractaltree2.png" 
+                  alt="FractalTree"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                 <div className="absolute bottom-4 left-4 text-white">
                   <h3 className="text-2xl font-bold">Fractal Trees</h3>
                   <div className="text-gray-200">Generative recursive trees</div>
                 </div>
               </div>
-              <div className="p-6">
+              <div className="p-6 flex-1 flex flex-col">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="flex items-center">
                     <GitBranch size={16} className="text-emerald-500 mr-2" />
@@ -100,56 +118,98 @@ export default function Home() {
                     <span className="text-sm text-gray-600 dark:text-gray-300">Multiple Styles</span>
                   </div>
                 </div>
-                <div className="text-gray-600 dark:text-gray-300 mb-6">
+                <div className="text-gray-600 dark:text-gray-300 mb-6 flex-grow">
                   Create your own unique fractal trees with our advanced generator. 
                   Customize every aspect and mint your creation as an NFT.
                 </div>
-                <Link href="/fractal-generator">
-                  <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
-                    Create Your Tree
-                  </Button>
-                </Link>
+                <div className="flex gap-2">
+                  <Link href="/fractal-generator" className="flex-1">
+                    <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
+                      Create Your Tree
+                    </Button>
+                  </Link>
+                  <Link 
+                    href="https://opensea.io/collection/fractal-tree-ga" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
+                    <Button 
+                      variant="outline" 
+                      className="p-2 bg-emerald-600 hover:bg-emerald-700 border-emerald-600 flex items-center justify-center"
+                    >
+                      <Image 
+                        src="/icons/openseatransparent.svg" 
+                        alt="OpenSea" 
+                        width={20} 
+                        height={20} 
+                      />
+                    </Button>
+                  </Link>
+                </div>
               </div>
             </div>
             
             {/* Murmuration Card */}
             <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group flex flex-col h-full">
-  <div className="relative h-60 overflow-hidden bg-gradient-to-br from-purple-400/20 to-pink-500/20">
-        <Image 
-      src="/murmuration.jpg" 
-      alt="Murmuration666"
-      fill
-      className="object-cover group-hover:scale-105 transition-transform duration-500"
-    />
-
-  </div>
-  <div className="p-6 flex-1 flex flex-col">
-    <div className="flex items-center gap-4 mb-4">
-      <div className="flex items-center">
-        <Sparkles size={16} className="text-purple-500 mr-2" />
-        <span className="text-sm text-gray-600 dark:text-gray-300">666 Items</span>
-      </div>
-      <div className="flex items-center">
-        <Layers size={16} className="text-purple-500 mr-2" />
-        <span className="text-sm text-gray-600 dark:text-gray-300">Limited Edition</span>
-      </div>
-    </div>
-    <div className="text-gray-600 dark:text-gray-300 mb-6 flex-grow">
-      Witness the breathtaking beauty of simulated flocking behaviors in our 
-      exclusive 666-piece limited collection.
-    </div>
-    <Link href="/murmuration" className="mt-auto">
-      <Button className="w-full bg-purple-600 hover:bg-purple-700">
-        View Murmuration 666
-      </Button>
-    </Link>
-  </div>
-</div>
-<MazeFeatureCard />
+              <div className="relative h-60 overflow-hidden bg-gradient-to-br from-purple-400/20 to-pink-500/20">
+                <Image 
+                  src="/murmuration.jpg" 
+                  alt="Murmuration666"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                <div className="absolute bottom-4 left-4 text-white">
+                  <h3 className="text-2xl font-bold">Murmuration 666</h3>
+                  <div className="text-gray-200">Flocking Behaviors Collection</div>
+                </div>
+              </div>
+              <div className="p-6 flex-1 flex flex-col">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="flex items-center">
+                    <Sparkles size={16} className="text-purple-500 mr-2" />
+                    <span className="text-sm text-gray-600 dark:text-gray-300">666 Items</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Layers size={16} className="text-purple-500 mr-2" />
+                    <span className="text-sm text-gray-600 dark:text-gray-300">Limited Edition</span>
+                  </div>
+                </div>
+                <div className="text-gray-600 dark:text-gray-300 mb-6 flex-grow">
+                  Witness the breathtaking beauty of simulated flocking behaviors in our 
+                  exclusive 666-piece limited collection.
+                </div>
+                <div className="flex gap-2">
+                  <Link href="/murmuration" className="flex-1">
+                    <Button className="w-full bg-purple-600 hover:bg-purple-700">
+                      View Murmuration 666
+                    </Button>
+                  </Link>
+                  <Link 
+                    href="https://opensea.io/collection/murmuration-666" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
+                    <Button 
+                      variant="outline" 
+                      className="p-2 bg-purple-600 hover:bg-purple-700 border-purple-600 flex items-center justify-center"
+                    >
+                      <Image 
+                        src="/icons/openseatransparent.svg" 
+                        alt="OpenSea" 
+                        width={20} 
+                        height={20} 
+                      />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+            <MazeFeatureCard />
           </div>
         </Container>
       </section>
-      
+
       {/* Lunar Chronicles Feature Section - Dinâmica */}
       <LunarFeatureSection />
       

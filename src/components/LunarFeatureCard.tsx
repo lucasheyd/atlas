@@ -62,11 +62,30 @@ export const LunarChroniclesCard = () => {
           NFTs that dynamically transform with the real lunar cycle. Each token reflects 
           the current phase of the moon with customizable imagery.
         </div>
-        <Link href="/lunar-update" className="mt-auto">
-          <Button className="w-full bg-blue-600 hover:bg-blue-700">
-            Mint Lunar NFT
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/lunar-update" className="flex-1">
+            <Button className="w-full bg-blue-600 hover:bg-blue-700">
+              Mint Lunar NFT
+            </Button>
+          </Link>
+          <Link 
+            href="https://opensea.io/collection/dynamic-lunar-chronicles" 
+            target="_blank" 
+            rel="noopener noreferrer"
+          >
+            <Button 
+              variant="outline" 
+              className="p-2 bg-blue-600 hover:bg-blue-700 border-blue-600 flex items-center justify-center"
+            >
+              <Image 
+                src="/icons/openseatransparent.svg" 
+                alt="OpenSea" 
+                width={20} 
+                height={20} 
+              />
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   );

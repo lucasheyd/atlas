@@ -1,7 +1,7 @@
 import React from 'react';
 import Image from "next/image";
 import Link from "next/link";
-import { Gamepad2, Layers, Puzzle } from "lucide-react";
+import { Gamepad2, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const MazeFeatureCard = () => {
@@ -35,11 +35,30 @@ export const MazeFeatureCard = () => {
           Navigate through procedurally generated mazes with your unique character, 
           tracking your best times and move counts on the blockchain.
         </div>
-        <Link href="/maze-puzzle" className="mt-auto">
-          <Button className="w-full bg-teal-600 hover:bg-teal-700">
-            Explore Maze Puzzle
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/maze-puzzle" className="flex-1">
+            <Button className="w-full bg-teal-600 hover:bg-teal-700">
+              Explore Maze Puzzle
+            </Button>
+          </Link>
+          <Link 
+            href="https://opensea.io/collection/maze-puzzle" 
+            target="_blank" 
+            rel="noopener noreferrer"
+          >
+            <Button 
+              variant="outline" 
+              className="p-2 bg-teal-600 hover:bg-teal-700 border-teal-600 flex items-center justify-center"
+            >
+              <Image 
+                src="/icons/openseatransparent.svg" 
+                alt="OpenSea" 
+                width={20} 
+                height={20} 
+              />
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   );
