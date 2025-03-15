@@ -15,7 +15,7 @@ import {
 import { Bot, Send, Loader2, Maximize2, Minimize2, RefreshCw, Lock, Unlock } from 'lucide-react';
 import { useWallet } from '@/components/WalletConnect';
 
-// Define Message type directly instead of importing it
+// Define Message type directly
 type Message = {
   role: 'user' | 'assistant';
   content: string;
@@ -58,11 +58,12 @@ export default function AgentChat() {
     }
   }, [messages, loading]);
 
-  // Load conversation when wallet is connected - now using API endpoint
+  // Load conversation when wallet is connected
   useEffect(() => {
     const loadUserConversation = async () => {
       if (isConnected && address) {
         try {
+          // Load conversation from API
           const response = await fetch(`/api/conversations?address=${address}`);
           
           if (!response.ok) {
@@ -110,12 +111,13 @@ export default function AgentChat() {
     loadUserConversation();
   }, [isConnected, address]);
 
-  // Auto-save conversation when messages change - now using API endpoint
+  // Auto-save conversation when messages change
   useEffect(() => {
     const saveUserConversation = async () => {
       if (isConnected && address && messages.length > 0) {
         setIsSaving(true);
         try {
+          // Save conversation via API
           const response = await fetch('/api/conversations', {
             method: 'POST',
             headers: {
@@ -145,10 +147,11 @@ export default function AgentChat() {
     }
   }, [messages, isConnected, address]);
 
-  // Function to clear the conversation - now using API endpoint
+  // Function to clear the conversation
   const clearUserConversation = async () => {
     if (isConnected && address) {
       try {
+        // Clear conversation via API
         const response = await fetch(`/api/conversations?address=${address}`, {
           method: 'DELETE',
         });
@@ -214,19 +217,26 @@ export default function AgentChat() {
         }),
       });
 
-      const data = await response.json();
+      // Parse response data
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Error parsing response JSON:', jsonError);
+        throw new Error('Failed to parse agent response');
+      }
       
       if (response.ok) {
         // Add agent response to chat
         const agentResponse = {
           role: 'assistant', 
-          content: data.message || 'I didn\'t understand your request.',
+          content: data.message || data.response || 'I didn\'t understand your request.',
           timestamp: Date.now()
         };
         
         setMessages(prev => [...prev, agentResponse]);
       } else if (data.retryAvailable) {
-        // Retry once
+        // Try again once
         try {
           const retryResponse = await fetch('/api/agent-proxy', {
             method: 'POST',
@@ -248,7 +258,7 @@ export default function AgentChat() {
               ...prev, 
               { 
                 role: 'assistant', 
-                content: retryData.message || 'I didn\'t understand your request.',
+                content: retryData.message || retryData.response || 'I didn\'t understand your request.',
                 timestamp: Date.now()
               }
             ]);

@@ -16,17 +16,17 @@ export async function GET() {
     
     if (LOCAL_AGENT_URL) {
       try {
-        // Use a GET request for diagnostics instead of POST
+        // Use POST method with proper JSON body
         const testResponse = await fetch(LOCAL_AGENT_URL, {
-          method: 'GET',
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...(API_KEY && { 'Authorization': `Bearer ${API_KEY}` })
           },
-      body: JSON.stringify({ 
-        message: "Hello from diagnostics", 
-        userId: "system-check" 
-      }),
+          body: JSON.stringify({ 
+            message: "Hello from diagnostics", 
+            userId: "system-check" 
+          })
         });
         
         if (testResponse.ok) {
