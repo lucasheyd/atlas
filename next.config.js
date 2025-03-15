@@ -1,7 +1,9 @@
 /** @type {import('next').NextConfig} */
+const path = require('path');
+
 const nextConfig = {
   reactStrictMode: true,
-  output: 'standalone', // Adicionado para melhor compatibilidade com Vercel
+  output: 'standalone',
   images: {
     remotePatterns: [
       {
@@ -12,6 +14,24 @@ const nextConfig = {
     unoptimized: true,
   },
   webpack: (config, { isServer }) => {
+    // Configurações de resolução de módulos
+    config.resolve.modules = [
+      path.resolve('./src'),
+      path.resolve('./node_modules')
+    ];
+
+    // Aliases mais explícitos
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@/components': path.resolve('./src/components'),
+      '@/app': path.resolve('./src/app'),
+      '@/services': path.resolve('./src/services'),
+      '@/hooks': path.resolve('./src/hooks'),
+      '@/lib': path.resolve('./src/lib'),
+      '@/utils': path.resolve('./src/utils')
+    };
+
+    // Configurações de build anteriores
     if (isServer) {
       config.externals = [...config.externals, 
         'ethers',
@@ -26,17 +46,6 @@ const nextConfig = {
         tls: false
       };
     }
-    
-    // Adiciona aliases para resolver problemas de importação
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '@/components': './src/components',
-      '@/app': './src/app',
-      '@/services': './src/services',
-      '@/hooks': './src/hooks',
-      '@/lib': './src/lib',
-      '@/utils': './src/utils'
-    };
     
     return config;
   },
