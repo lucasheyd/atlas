@@ -1,9 +1,6 @@
 /** @type {import('next').NextConfig} */
-const path = require('path');
-
 const nextConfig = {
   reactStrictMode: true,
-  output: 'standalone',
   images: {
     remotePatterns: [
       {
@@ -11,45 +8,21 @@ const nextConfig = {
         hostname: '**',
       },
     ],
-    unoptimized: true,
+    unoptimized: true, // Isso desativa a otimização de imagens, permitindo qualquer fonte
+    // Esta opção resolve o problema do IPFS, mas você perde a otimização de imagens do Next.js
   },
+  // Configuração específica para solucionar problemas de build com ethers.js
   webpack: (config, { isServer }) => {
-    // Configurações de resolução de módulos
-    config.resolve.modules = [
-      path.resolve('./src'),
-      path.resolve('./public'),
-      path.resolve('./node_modules')
-    ];
-
-    // Adiciona suporte para arquivos estáticos
-    config.module.rules.push({
-      test: /\.(png|jpe?g|gif|svg)$/i,
-      type: 'asset/resource',
-      generator: {
-        filename: 'static/media/[name].[hash].[ext]'
-      }
-    });
-
-    // Aliases e configurações anteriores
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '@/components': path.resolve('./src/components'),
-      '@/app': path.resolve('./src/app'),
-      '@/services': path.resolve('./src/services'),
-      '@/hooks': path.resolve('./src/hooks'),
-      '@/lib': path.resolve('./src/lib'),
-      '@/utils': path.resolve('./src/utils'),
-      '@/public': path.resolve('./public')
-    };
-
-    // Configurações de build anteriores
+    // Se estiver executando no servidor, ignoramos completamente os módulos que causam problemas
     if (isServer) {
+      // Ignore pacotes que usam APIs específicas do navegador
       config.externals = [...config.externals, 
         'ethers',
         'merkletreejs',
         'keccak256'
       ];
     } else {
+      // No cliente, fornecemos fallbacks 
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
@@ -60,12 +33,14 @@ const nextConfig = {
     
     return config;
   },
+  // Configurações para ignorar erros no build
   typescript: {
     ignoreBuildErrors: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
   }
+  // Removido o experimental.optimizeCss que estava causando o erro com critters
 };
 
 module.exports = nextConfig;
