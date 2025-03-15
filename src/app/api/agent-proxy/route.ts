@@ -33,15 +33,15 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // MODIFIED: Don't append /api/agent to the URL if it's a direct ngrok URL
-    // The agent is expecting requests directly to its endpoint
+    // Don't modify the URL
     const agentUrl = LOCAL_AGENT_URL;
     
     console.log('🌐 Attempting to connect to agent at:', agentUrl);
+    console.log('📦 Sending payload:', JSON.stringify(body).substring(0, 200));
     
     // Set a more robust timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // Increase to 30 seconds
 
     try {
       // Make the POST request
@@ -52,12 +52,15 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json',
           ...(API_KEY && { 'Authorization': `Bearer ${API_KEY}` }),
           'X-Agent-Request-Source': 'vercel-proxy',
-          'X-Timeout': '15000'
+          'X-Timeout': '30000'
         },
-        body: JSON.stringify(body.message ? body : {
-      message: "Hello from diagnostic check",
-      userId: "system-check"
-       }),
+        body: JSON.stringify({
+          // Ensure we send data in the format your agent expects
+          message: body.message,
+          userId: body.walletAddress || 'anonymous',
+          // Pass any additional fields from the original request
+          ...body
+        }),
       });
       
       clearTimeout(timeoutId);
@@ -81,9 +84,32 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // Successful response
-      const data = await response.json();
-      console.log('✅ Successfully received agent response');
+      // Successful response - try to parse JSON
+      let data;
+      try {
+        const responseText = await response.text();
+        console.log('📬 Raw response:', responseText.substring(0, 200));
+        
+        try {
+          data = JSON.parse(responseText);
+          console.log('✅ Successfully parsed JSON response');
+        } catch (jsonError) {
+          console.log('⚠️ Response is not valid JSON. Creating fallback response object.');
+          // If not valid JSON, create a fallback response
+          data = {
+            success: true,
+            message: responseText
+          };
+        }
+      } catch (textError) {
+        console.error('❌ Error reading response text:', textError);
+        return NextResponse.json({
+          success: false,
+          message: "I received your message but had trouble processing the response.",
+          retryAvailable: false
+        }, { status: 200 }); // Return 200 to avoid triggering retries
+      }
+      
       return NextResponse.json(data);
       
     } catch (error) {
@@ -96,8 +122,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: false,
         message: isTimeout 
-          ? "Sorry, the connection timed out. Please try again." 
-          : "I'm Synthesis, the CEO and visionary behind several innovative NFT collections. While my connection to my knowledge base is temporarily limited, I can still assist with general questions about NFTs, blockchain technology, or digital art.",
+          ? "Sorry, the connection timed out. Please try again later." 
+          : "I'm having trouble connecting to my knowledge base right now. Please try again later.",
         retryAvailable: true,
         isTimeout: isTimeout,
         errorDetails: error.message
@@ -117,7 +143,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Add support for GET method (useful for diagnostics)
 export async function GET() {
   return NextResponse.json({
     status: 'healthy',
