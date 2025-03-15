@@ -1,5 +1,5 @@
-import { fileURLToPath } from 'url';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -13,11 +13,11 @@ const nextConfig = {
         hostname: '**',
       },
     ],
-    unoptimized: true,
+    unoptimized: true, // This disables image optimization, allowing any source
   },
-  // Existing webpack configuration
+  // Configuration for resolving issues with ethers.js build
   webpack: (config, { isServer }) => {
-    // Keep your existing webpack configuration here
+    // If running on the server, completely ignore modules that cause problems
     if (isServer) {
       config.externals = [...config.externals, 
         'ethers',
@@ -25,6 +25,7 @@ const nextConfig = {
         'keccak256'
       ];
     } else {
+      // On the client, provide fallbacks
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
@@ -33,7 +34,7 @@ const nextConfig = {
       };
     }
     
-    // Add explicit path aliases
+    // Add explicit path alias resolution
     config.resolve.alias = {
       ...config.resolve.alias,
       '@/components': path.join(__dirname, 'src/components'),
@@ -46,7 +47,7 @@ const nextConfig = {
     
     return config;
   },
-  // Retain your existing configurations
+  // Settings to ignore errors in the build
   typescript: {
     ignoreBuildErrors: true,
   },

@@ -1,110 +1,115 @@
 // src/services/conversationStorage.ts
+// This version is meant to run only on the server side
+
 import { createClient } from 'redis';
 
-// Configuração do Redis
+// Type definitions
+export type Message = {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+};
+
+// Create Redis client
 const redisClient = createClient({
-  url: process.env.REDIS_URL,
+  url: process.env.REDIS_URL || 'redis://localhost:6379'
 });
 
-// Conectar ao Redis
+// Connect to Redis
 async function connectRedis() {
+  // Safety check to ensure this only runs server-side
+  if (typeof window !== 'undefined') {
+    console.warn('Warning: Attempted to connect to Redis from browser environment');
+    return;
+  }
+  
   if (!redisClient.isOpen) {
     redisClient.on('error', (err) => console.error('Redis Client Error', err));
     await redisClient.connect();
   }
 }
 
-// Tipo de Mensagem
-export type Message = {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp?: number;
-};
-
-// Chave para armazenamento
-const getConversationKey = (userAddress: string) => 
-  `conversation:${userAddress.toLowerCase()}`;
-
-// Carregar conversa
-export async function loadConversation(userAddress: string): Promise<Message[]> {
-  try {
-    await connectRedis();
-    const key = getConversationKey(userAddress);
-    const conversationJson = await redisClient.get(key);
-    return conversationJson ? JSON.parse(conversationJson) : [];
-  } catch (error) {
-    console.error('Erro ao carregar conversa:', error);
-    return [];
-  }
-}
-
-// Salvar conversa
-export async function saveConversation(userAddress: string, messages: Message[]): Promise<boolean> {
-  try {
-    await connectRedis();
-    const key = getConversationKey(userAddress);
-    
-    // Limitar para últimas 50 mensagens
-    const limitedMessages = messages.slice(-50);
-    
-    // Salvar como JSON
-    await redisClient.set(key, JSON.stringify(limitedMessages));
-    
-    return true;
-  } catch (error) {
-    console.error('Erro ao salvar conversa:', error);
-    return false;
-  }
-}
-
-// Limpar conversa
-export async function clearConversation(userAddress: string): Promise<boolean> {
-  try {
-    await connectRedis();
-    const key = getConversationKey(userAddress);
-    await redisClient.del(key);
-    return true;
-  } catch (error) {
-    console.error('Erro ao limpar conversa:', error);
-    return false;
-  }
-}
-
-// Manipulador unificado de solicitações
+// Handle conversation request (load, save, clear)
 export async function handleConversationRequest(
-  userAddress: string, 
+  walletAddress: string,
   action: 'load' | 'save' | 'clear',
   messages?: Message[]
-): Promise<{ success: boolean, messages?: Message[], error?: string }> {
+) {
   try {
+    // Ensure Redis is connected
+    await connectRedis();
+    
+    // Normalize wallet address
+    const normalizedAddress = walletAddress.toLowerCase();
+    const key = `conversation:${normalizedAddress}`;
+    
+    // Perform the requested action
     switch (action) {
       case 'load':
-        const loadedMessages = await loadConversation(userAddress);
-        return { success: true, messages: loadedMessages };
+        const data = await redisClient.get(key);
+        return {
+          success: true,
+          messages: data ? JSON.parse(data) : []
+        };
         
       case 'save':
-        if (!messages) {
-          return { success: false, error: 'Nenhuma mensagem fornecida para salvar' };
+        if (!messages || !Array.isArray(messages)) {
+          return {
+            success: false,
+            error: 'No valid messages provided for saving'
+          };
         }
-        const saveResult = await saveConversation(userAddress, messages);
-        return { success: saveResult };
+        await redisClient.set(key, JSON.stringify(messages));
+        return { success: true };
         
       case 'clear':
-        const clearResult = await clearConversation(userAddress);
-        return { success: clearResult };
+        await redisClient.del(key);
+        return { success: true };
         
       default:
-        return { success: false, error: 'Ação inválida' };
+        return {
+          success: false,
+          error: 'Invalid action'
+        };
     }
   } catch (error) {
-    console.error('Erro no armazenamento de conversas:', error);
-    return { success: false, error: 'Falha na operação de armazenamento' };
+    console.error(`Error in conversation storage (${action}):`, error);
+    return {
+      success: false,
+      error: 'Operation failed due to server error'
+    };
   }
 }
 
-// Garantir desconexão quando o processo terminar
-process.on('SIGINT', async () => {
-  if (redisClient.isOpen) {
-    await redisClient.quit();
+// The following functions are kept for backward compatibility but now use the API
+// These are only safe to use server-side, not in client components
+
+export async function loadConversation(walletAddress: string): Promise<Message[]> {
+  if (typeof window !== 'undefined') {
+    console.warn('Warning: Direct Redis call attempted from browser. Use API endpoint instead.');
+    return [];
   }
-});
+  
+  const result = await handleConversationRequest(walletAddress, 'load');
+  return result.success ? result.messages : [];
+}
+
+export async function saveConversation(walletAddress: string, messages: Message[]): Promise<boolean> {
+  if (typeof window !== 'undefined') {
+    console.warn('Warning: Direct Redis call attempted from browser. Use API endpoint instead.');
+    return false;
+  }
+  
+  const result = await handleConversationRequest(walletAddress, 'save', messages);
+  return result.success;
+}
+
+export async function clearConversation(walletAddress: string): Promise<boolean> {
+  if (typeof window !== 'undefined') {
+    console.warn('Warning: Direct Redis call attempted from browser. Use API endpoint instead.');
+    return false;
+  }
+  
+  const result = await handleConversationRequest(walletAddress, 'clear');
+  return result.success;
+}

@@ -14,12 +14,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Bot, Send, Loader2, Maximize2, Minimize2, RefreshCw, Lock, Unlock } from 'lucide-react';
 import { useWallet } from '@/components/WalletConnect';
-import { 
-  Message, 
-  loadConversation, 
-  saveConversation, 
-  clearConversation 
-} from '../services/conversationStorage';
+
+// Define Message type directly instead of importing it
+type Message = {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+};
 
 export default function AgentChat() {
   const [messages, setMessages] = useState<Message[]>([
@@ -57,16 +58,22 @@ export default function AgentChat() {
     }
   }, [messages, loading]);
 
-  // Load conversation when wallet is connected
+  // Load conversation when wallet is connected - now using API endpoint
   useEffect(() => {
     const loadUserConversation = async () => {
       if (isConnected && address) {
         try {
-          const savedMessages = await loadConversation(address);
+          const response = await fetch(`/api/conversations?address=${address}`);
           
-          if (savedMessages && savedMessages.length > 0) {
-            console.log(`Loaded ${savedMessages.length} messages for ${address}`);
-            setMessages(savedMessages);
+          if (!response.ok) {
+            throw new Error(`Error loading conversation: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          
+          if (data.success && data.messages && data.messages.length > 0) {
+            console.log(`Loaded ${data.messages.length} messages for ${address}`);
+            setMessages(data.messages);
           } else {
             // If no saved messages, add initial greeting
             setMessages([
@@ -103,13 +110,27 @@ export default function AgentChat() {
     loadUserConversation();
   }, [isConnected, address]);
 
-  // Auto-save conversation when messages change
+  // Auto-save conversation when messages change - now using API endpoint
   useEffect(() => {
     const saveUserConversation = async () => {
       if (isConnected && address && messages.length > 0) {
         setIsSaving(true);
         try {
-          await saveConversation(address, messages);
+          const response = await fetch('/api/conversations', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              walletAddress: address,
+              action: 'save',
+              messages: messages
+            }),
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Error saving conversation: ${response.status}`);
+          }
         } catch (error) {
           console.error('Error auto-saving conversation:', error);
         } finally {
@@ -124,11 +145,18 @@ export default function AgentChat() {
     }
   }, [messages, isConnected, address]);
 
-  // Function to clear the conversation
+  // Function to clear the conversation - now using API endpoint
   const clearUserConversation = async () => {
     if (isConnected && address) {
       try {
-        await clearConversation(address);
+        const response = await fetch(`/api/conversations?address=${address}`, {
+          method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Error clearing conversation: ${response.status}`);
+        }
+        
         setMessages([
           { 
             role: 'assistant', 
@@ -197,52 +225,52 @@ export default function AgentChat() {
         };
         
         setMessages(prev => [...prev, agentResponse]);
-      }else if (data.retryAvailable) {
-      // Tentar novamente uma vez
-      try {
-        const retryResponse = await fetch('/api/agent-proxy', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Wallet-Address': address,
-          },
-          body: JSON.stringify({ 
-            message: userMessage,
-            walletAddress: address,
-            history: updatedMessages.slice(-8)
-          }),
-        });
+      } else if (data.retryAvailable) {
+        // Retry once
+        try {
+          const retryResponse = await fetch('/api/agent-proxy', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Wallet-Address': address,
+            },
+            body: JSON.stringify({ 
+              message: userMessage,
+              walletAddress: address,
+              history: updatedMessages.slice(-8)
+            }),
+          });
 
-        const retryData = await retryResponse.json();
+          const retryData = await retryResponse.json();
 
-        if (retryResponse.ok) {
-          setMessages(prev => [
-            ...prev, 
-            { 
-              role: 'assistant', 
-              content: retryData.message || 'I didn\'t understand your request.',
-              timestamp: Date.now()
-            }
-          ]);
-        } else {
-          throw new Error('Retry failed');
+          if (retryResponse.ok) {
+            setMessages(prev => [
+              ...prev, 
+              { 
+                role: 'assistant', 
+                content: retryData.message || 'I didn\'t understand your request.',
+                timestamp: Date.now()
+              }
+            ]);
+          } else {
+            throw new Error('Retry failed');
+          }
+        } catch (retryError) {
+          setDialogMessage('The agent is persistently unavailable. Please try again later.');
+          setOpenDialog(true);
         }
-      } catch (retryError) {
-        setDialogMessage('The agent is persistently unavailable. Please try again later.');
+      } else {
+        setDialogMessage(`Error: ${data.error || 'Something went wrong'}`);
         setOpenDialog(true);
       }
-    } else {
-      setDialogMessage(`Error: ${data.error || 'Something went wrong'}`);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setDialogMessage('The agent is offline or inaccessible at the moment. Please try again later.');
       setOpenDialog(true);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Error sending message:', error);
-    setDialogMessage('The agent is offline or inaccessible at the moment. Please try again later.');
-    setOpenDialog(true);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
