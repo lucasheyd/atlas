@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Container } from "@/components/Container";
-import heroImg from "public/Fractal2.png";
 import { Button } from "@/components/ui/button";
 
 export const Hero = () => {
@@ -63,7 +62,7 @@ export const Hero = () => {
               
               <div className="relative rounded-2xl overflow-hidden shadow-2xl ring-1 ring-black/5 dark:ring-white/10">
                 <Image
-                  src={heroImg}
+                  src="/Fractal2.png"
                   width={616}
                   height={617}
                   className="w-full h-auto object-cover rounded-2xl transform transition-transform hover:scale-102"
