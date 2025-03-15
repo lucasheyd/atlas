@@ -4,5 +4,13 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "regions": ["cdg1"],
-  "outputDirectory": ".next"
+  "outputDirectory": ".next",
+  "builds": [
+    { "src": "pages/api/**/*.js", "use": "@vercel/node" },
+    { "src": "app/api/**/*.ts", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "pages/api/$1.js" },
+    { "src": "/app/api/(.*)", "dest": "app/api/$1.ts" }
+  ]
 }
