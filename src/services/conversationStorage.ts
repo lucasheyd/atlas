@@ -1,32 +1,35 @@
-// src/services/conversationStorage.ts
 import { createClient } from 'redis';
 
-// Configuração do Redis
-const redisClient = createClient({
-  url: process.env.REDIS_URL,
-});
+// Verifica se está no navegador
+const isBrowser = typeof window !== 'undefined';
 
-// Conectar ao Redis
+// Configuração do Redis
+const redisClient = isBrowser 
+  ? null 
+  : createClient({
+      url: process.env.REDIS_URL,
+      // Configurações adicionais para ambientes não-navegador
+    });
+
+// Função de conexão
 async function connectRedis() {
+  // Se estiver no navegador, não faça nada
+  if (isBrowser) return null;
+
   if (!redisClient.isOpen) {
     redisClient.on('error', (err) => console.error('Redis Client Error', err));
     await redisClient.connect();
   }
+  return redisClient;
 }
 
-// Tipo de Mensagem
-export type Message = {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp?: number;
-};
-
-// Chave para armazenamento
-const getConversationKey = (userAddress: string) => 
-  `conversation:${userAddress.toLowerCase()}`;
-
-// Carregar conversa
+// Modificar funções para lidar com o navegador
 export async function loadConversation(userAddress: string): Promise<Message[]> {
+  // Se estiver no navegador, retorne um array vazio ou implemente uma estratégia alternativa
+  if (isBrowser) {
+    return [];
+  }
+
   try {
     await connectRedis();
     const key = getConversationKey(userAddress);
@@ -38,73 +41,31 @@ export async function loadConversation(userAddress: string): Promise<Message[]> 
   }
 }
 
-// Salvar conversa
+// Faça modificações similares para saveConversation e clearConversation
 export async function saveConversation(userAddress: string, messages: Message[]): Promise<boolean> {
+  if (isBrowser) {
+    // Implemente um método de armazenamento alternativo, como localStorage
+    try {
+      localStorage.setItem(
+        `conversation:${userAddress.toLowerCase()}`, 
+        JSON.stringify(messages)
+      );
+      return true;
+    } catch (error) {
+      console.error('Erro ao salvar conversa no localStorage:', error);
+      return false;
+    }
+  }
+
+  // Resto do código de salvamento no servidor
   try {
     await connectRedis();
     const key = getConversationKey(userAddress);
-    
-    // Limitar para últimas 50 mensagens
     const limitedMessages = messages.slice(-50);
-    
-    // Salvar como JSON
     await redisClient.set(key, JSON.stringify(limitedMessages));
-    
     return true;
   } catch (error) {
     console.error('Erro ao salvar conversa:', error);
     return false;
   }
 }
-
-// Limpar conversa
-export async function clearConversation(userAddress: string): Promise<boolean> {
-  try {
-    await connectRedis();
-    const key = getConversationKey(userAddress);
-    await redisClient.del(key);
-    return true;
-  } catch (error) {
-    console.error('Erro ao limpar conversa:', error);
-    return false;
-  }
-}
-
-// Manipulador unificado de solicitações
-export async function handleConversationRequest(
-  userAddress: string, 
-  action: 'load' | 'save' | 'clear',
-  messages?: Message[]
-): Promise<{ success: boolean, messages?: Message[], error?: string }> {
-  try {
-    switch (action) {
-      case 'load':
-        const loadedMessages = await loadConversation(userAddress);
-        return { success: true, messages: loadedMessages };
-        
-      case 'save':
-        if (!messages) {
-          return { success: false, error: 'Nenhuma mensagem fornecida para salvar' };
-        }
-        const saveResult = await saveConversation(userAddress, messages);
-        return { success: saveResult };
-        
-      case 'clear':
-        const clearResult = await clearConversation(userAddress);
-        return { success: clearResult };
-        
-      default:
-        return { success: false, error: 'Ação inválida' };
-    }
-  } catch (error) {
-    console.error('Erro no armazenamento de conversas:', error);
-    return { success: false, error: 'Falha na operação de armazenamento' };
-  }
-}
-
-// Garantir desconexão quando o processo terminar
-process.on('SIGINT', async () => {
-  if (redisClient.isOpen) {
-    await redisClient.quit();
-  }
-});
