@@ -13,11 +13,11 @@ const nextConfig = {
         hostname: '**',
       },
     ],
-    unoptimized: true, // This disables image optimization, allowing any source
+    unoptimized: true,
   },
-  // Configuration for resolving issues with ethers.js build
+  // Existing webpack configuration
   webpack: (config, { isServer }) => {
-    // If running on the server, completely ignore modules that cause problems
+    // Keep your existing webpack configuration here
     if (isServer) {
       config.externals = [...config.externals, 
         'ethers',
@@ -25,7 +25,6 @@ const nextConfig = {
         'keccak256'
       ];
     } else {
-      // On the client, provide fallbacks
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
@@ -34,7 +33,7 @@ const nextConfig = {
       };
     }
     
-    // Add explicit path alias resolution
+    // Add explicit path aliases
     config.resolve.alias = {
       ...config.resolve.alias,
       '@/components': path.join(__dirname, 'src/components'),
@@ -47,7 +46,7 @@ const nextConfig = {
     
     return config;
   },
-  // Settings to ignore errors in the build
+  // Retain your existing configurations
   typescript: {
     ignoreBuildErrors: true,
   },

@@ -2,10 +2,10 @@
 
 import dynamic from 'next/dynamic';
 
-const TokenGate = dynamic(() => import('@/components/bot/TokenGate'), { 
+const TokenGate = dynamic(() => import('../../components/bot/TokenGate'), { 
   ssr: false 
 });
-const BotComponent = dynamic(() => import('@/components/bot/BotComponent'), { 
+const BotComponent = dynamic(() => import('../../components/bot/BotComponent'), { 
   ssr: false 
 });
 

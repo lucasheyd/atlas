@@ -1,10 +1,10 @@
 "use client";
 
 import React from 'react';
-import { Container } from '@/components/Container';
-import { SectionTitle } from '@/components/SectionTitle';
+import { Container } from '../../components/Container';
+import { SectionTitle } from '../../components/SectionTitle';
 import { Bot, Sparkles, LineChart, PenTool, Palette, Layers } from 'lucide-react';
-import { WalletProvider } from '@/components/WalletConnect';
+import { WalletProvider } from '../../components/WalletConnect';
 import AgentChatWrapper from './AgentChatWrapper';
 
 export default function AgentPage() {
