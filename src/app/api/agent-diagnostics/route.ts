@@ -16,13 +16,13 @@ export async function GET() {
     
     if (LOCAL_AGENT_URL) {
       try {
+        // Use a GET request for diagnostics instead of POST
         const testResponse = await fetch(LOCAL_AGENT_URL, {
-          method: 'POST',
+          method: 'GET',
           headers: {
             'Content-Type': 'application/json',
             ...(API_KEY && { 'Authorization': `Bearer ${API_KEY}` })
-          },
-          body: JSON.stringify({ message: "diagnostics-test" }),
+          }
         });
         
         if (testResponse.ok) {
@@ -54,7 +54,7 @@ export async function GET() {
       },
       configuration: {
         agentUrlConfigured: !!LOCAL_AGENT_URL,
-        agentUrl: LOCAL_AGENT_URL ? `${LOCAL_AGENT_URL.substring(0, 8)}...` : null,
+        agentUrl: LOCAL_AGENT_URL || 'Not configured',
         apiKeyConfigured: !!API_KEY
       },
       connectivity: {

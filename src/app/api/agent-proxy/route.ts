@@ -33,19 +33,18 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Ensure the URL ends with /api/agent
-    const agentUrl = LOCAL_AGENT_URL.endsWith('/api/agent') 
-      ? LOCAL_AGENT_URL 
-      : `${LOCAL_AGENT_URL}/api/agent`;
+    // MODIFIED: Don't append /api/agent to the URL if it's a direct ngrok URL
+    // The agent is expecting requests directly to its endpoint
+    const agentUrl = LOCAL_AGENT_URL;
     
     console.log('🌐 Attempting to connect to agent at:', agentUrl);
     
-    // Configurar um timeout mais robusto
+    // Set a more robust timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds
 
     try {
-      // Fazer a solicitação POST
+      // Make the POST request
       const response = await fetch(agentUrl, {
         method: 'POST',
         signal: controller.signal,
@@ -61,11 +60,11 @@ export async function POST(request: NextRequest) {
       clearTimeout(timeoutId);
       console.log('📡 Agent response status:', response.status);
       
-      // Se a resposta não for OK
+      // If the response is not OK
       if (!response.ok) {
         console.log('❌ Agent returned error status code:', response.status);
         
-        // Tenta ler o texto da resposta
+        // Try to read the response text
         const errorText = await response.text();
         console.log('🔍 Error response text:', errorText);
         
@@ -79,7 +78,7 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // Resposta bem-sucedida
+      // Successful response
       const data = await response.json();
       console.log('✅ Successfully received agent response');
       return NextResponse.json(data);
@@ -88,7 +87,7 @@ export async function POST(request: NextRequest) {
       clearTimeout(timeoutId);
       console.error('❌ Connection error:', error);
       
-      // Determina se é um timeout ou outro erro de rede
+      // Determine if it's a timeout or another network error
       const isTimeout = error.name === 'AbortError';
       
       return NextResponse.json({
@@ -115,7 +114,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Adiciona suporte para método GET (útil para diagnóstico)
+// Add support for GET method (useful for diagnostics)
 export async function GET() {
   return NextResponse.json({
     status: 'healthy',
