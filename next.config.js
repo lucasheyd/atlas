@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  output: 'standalone', // Adicionado para melhor compatibilidade com Vercel
   images: {
     remotePatterns: [
       {
@@ -8,21 +9,16 @@ const nextConfig = {
         hostname: '**',
       },
     ],
-    unoptimized: true, // Isso desativa a otimização de imagens, permitindo qualquer fonte
-    // Esta opção resolve o problema do IPFS, mas você perde a otimização de imagens do Next.js
+    unoptimized: true,
   },
-  // Configuração específica para solucionar problemas de build com ethers.js
   webpack: (config, { isServer }) => {
-    // Se estiver executando no servidor, ignoramos completamente os módulos que causam problemas
     if (isServer) {
-      // Ignore pacotes que usam APIs específicas do navegador
       config.externals = [...config.externals, 
         'ethers',
         'merkletreejs',
         'keccak256'
       ];
     } else {
-      // No cliente, fornecemos fallbacks 
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
@@ -31,16 +27,25 @@ const nextConfig = {
       };
     }
     
+    // Adiciona aliases para resolver problemas de importação
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@/components': './src/components',
+      '@/app': './src/app',
+      '@/services': './src/services',
+      '@/hooks': './src/hooks',
+      '@/lib': './src/lib',
+      '@/utils': './src/utils'
+    };
+    
     return config;
   },
-  // Configurações para ignorar erros no build
   typescript: {
     ignoreBuildErrors: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
   }
-  // Removido o experimental.optimizeCss que estava causando o erro com critters
 };
 
 module.exports = nextConfig;

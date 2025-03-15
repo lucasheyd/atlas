@@ -3,6 +3,7 @@
   "devCommand": "next dev",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "regions": ["cdg1"],
-  "outputDirectory": ".next"
+  "regions": ["iad1"],
+  "outputDirectory": ".next",
+  "output": "standalone"
 }

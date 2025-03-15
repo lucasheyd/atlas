@@ -3,18 +3,11 @@
     "baseUrl": ".",
     "paths": {
       "@/services/*": ["./src/services/*"],
-      "@/utils/*": [
-        "src/utils/*"
-      ],
-      "@/components/*": [
-        "src/components/*"
-      ],
-      "@/app/*": [
-        "src/app/*"
-      ],
-      "@/lib/*": [
-        "src/lib/*"
-      ]
+      "@/utils/*": ["./src/utils/*"],
+      "@/components/*": ["./src/components/*"],
+      "@/app/*": ["./src/app/*"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/hooks/*": ["./src/hooks/*"]
     },
     "allowJs": true,
     "skipLibCheck": true,
