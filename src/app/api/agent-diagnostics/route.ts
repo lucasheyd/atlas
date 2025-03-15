@@ -22,7 +22,11 @@ export async function GET() {
           headers: {
             'Content-Type': 'application/json',
             ...(API_KEY && { 'Authorization': `Bearer ${API_KEY}` })
-          }
+          },
+      body: JSON.stringify({ 
+        message: "Hello from diagnostics", 
+        userId: "system-check" 
+      }),
         });
         
         if (testResponse.ok) {

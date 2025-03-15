@@ -54,7 +54,10 @@ export async function POST(request: NextRequest) {
           'X-Agent-Request-Source': 'vercel-proxy',
           'X-Timeout': '15000'
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify(body.message ? body : {
+      message: "Hello from diagnostic check",
+      userId: "system-check"
+       }),
       });
       
       clearTimeout(timeoutId);
