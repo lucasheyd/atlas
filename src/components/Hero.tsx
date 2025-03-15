@@ -68,7 +68,6 @@ export const Hero = () => {
                   className="w-full h-auto object-cover rounded-2xl transform transition-transform hover:scale-102"
                   alt="Fractal Swarm NFT Illustration"
                   priority
-                  placeholder="blur"
                 />
                 
                 {/* Animated overlay */}
