@@ -1,273 +1,590 @@
-// Atualização do TerritoryFactory.ts para garantir que ornamentos sejam adicionados
-// corretamente para todos os níveis de fusão
+// src/Maps3d/3d/territories/TerritoryFactory.ts
+import { 
+  Object3D, 
+  MeshStandardMaterial, 
+  Color, 
+  Group,
+  Scene,
+  Vector3,
+  Mesh,
+  DirectionalLight
+} from 'three';
+import { PRNG } from '../../utils/PRNG';
+import { generateColorScheme } from '../../utils/ColorGenetics';
+import { createLandscape } from './LandscapeGenerator';
+import { addForestElements } from './ForestGenerator';
+import { addWaterElements } from './WaterGenerator';
+import { addMountainElements } from './MountainGenerator';
+import { addBuildingElements } from './BuildingGenerator';
 
-import * as THREE from 'three';
-import { MainlandRenderer } from './MainlandRenderer';
-import { IslandRenderer } from './IslandRenderer';
-import { PeninsulaRenderer } from './PeninsulaRenderer';
-import { MountainRenderer } from './MountainRenderer';
-import { ArchipelagoRenderer } from './ArchipelagoRenderer';
-import { DesertRenderer } from './DesertRenderer';
-import { ForestRenderer } from './ForestRenderer';
-import { Territory, TerritoryType } from '../../types/Territory';
-import { ColorGenetics } from '../../utils/ColorGenetics';
-import { OrnamentFactory } from '../ornaments/OrnamentFactory';
-import { RandomGenerator } from '../../utils/RandomGenerator';
+// Natural element colors
+const NATURAL_COLORS = {
+  water: "#1565C0",       // Natural blue water
+  forest: "#2E7D32",      // Natural green trees
+  mountains: "#757575",   // Natural gray mountains
+  desert: "#FBC02D",      // Natural sand color
+  plains: "#8BC34A",      // Natural grass color
+  snow: "#ECEFF1",        // Snow white
+  buildings: "#37474F"    // Dark gray building base color
+};
 
 export class TerritoryFactory {
-  private mainlandRenderer: MainlandRenderer;
-  private islandRenderer: IslandRenderer;
-  private peninsulaRenderer: PeninsulaRenderer;
-  private mountainRenderer: MountainRenderer;
-  private archipelagoRenderer: ArchipelagoRenderer;
-  private desertRenderer: DesertRenderer;
-  private forestRenderer: ForestRenderer;
-  private ornamentFactory: OrnamentFactory;
+  private scene: Scene | null = null;
+  private loadedTerritories: Map<string, Object3D> = new Map();
+  private territoryScale: number = 1;
+  private defaultSize: number = 100;
   
-  constructor() {
-    this.mainlandRenderer = new MainlandRenderer();
-    this.islandRenderer = new IslandRenderer();
-    this.peninsulaRenderer = new PeninsulaRenderer();
-    this.mountainRenderer = new MountainRenderer();
-    this.archipelagoRenderer = new ArchipelagoRenderer();
-    this.desertRenderer = new DesertRenderer();
-    this.forestRenderer = new ForestRenderer();
-    this.ornamentFactory = new OrnamentFactory();
-  }
-  
-  public createTerritory(territory: Territory): THREE.Object3D {
-    const group = new THREE.Group();
-    group.name = `territory-${territory.id}`;
-    
-    // Posicionamento base
-    group.position.set(...territory.position);
-    if (territory.rotation) {
-      group.rotation.y = territory.rotation * Math.PI / 180;
+  constructor(scene?: Scene, options: { territoryScale?: number } = {}) {
+    if (scene) {
+      this.scene = scene;
     }
     
-    // Cores baseadas em genética
-    const colors = ColorGenetics.generateColorScheme(
-      territory.visualSeed,
-      territory.fusionLevel,
-      territory.colorPalette
-    );
-    
-    // Criar mesh baseado no tipo
-    let mesh: THREE.Object3D;
-    
-    switch(territory.type) {
-      case TerritoryType.MAINLAND:
-        mesh = this.mainlandRenderer.createMesh(territory, colors);
-        break;
-      case TerritoryType.ISLAND:
-        mesh = this.islandRenderer.createMesh(territory, colors);
-        break;
-      case TerritoryType.PENINSULA:
-        mesh = this.peninsulaRenderer.createMesh(territory, colors);
-        break;
-      case TerritoryType.MOUNTAINS:
-        mesh = this.mountainRenderer.createMesh(territory, colors);
-        break;
-      case TerritoryType.ARCHIPELAGO:
-        mesh = this.archipelagoRenderer.createMesh(territory, colors);
-        break;
-      case TerritoryType.DESERT:
-        mesh = this.desertRenderer.createMesh(territory, colors);
-        break;
-      case TerritoryType.FOREST:
-        mesh = this.forestRenderer.createMesh(territory, colors);
-        break;
-      default:
-        mesh = this.islandRenderer.createMesh(territory, colors);
-    }
-    
-    group.add(mesh);
-    
-    // Adicionar ornamentos baseados no tipo de território e nível de fusão
-    this.addOrnamentsToTerritory(group, territory, colors);
-    
-    return group;
+    this.territoryScale = options.territoryScale || 1;
   }
   
   /**
-   * Adiciona ornamentos ao território com base no tipo e nível de fusão
-   * @param group Grupo 3D do território
-   * @param territory Dados do território
-   * @param colors Esquema de cores
+   * Set the scene where territories will be added
    */
-  private addOrnamentsToTerritory(
-    group: THREE.Group, 
-    territory: Territory, 
-    colors: any
-  ): void {
-    // Criar gerador de números aleatórios com a semente do território
-    const random = new RandomGenerator(territory.visualSeed);
-    
-    // Configurar ornamentos com base no tipo de território e nível de fusão
-    const ornaments = this.generateOrnamentConfig(territory, random);
-    
-    // Criar dados de atividade simulados para ornamentos
-    // Normalmente viriam do contrato, mas aqui estamos gerando para fins de visualização
-    const simulatedActivity = this.generateSimulatedActivity(territory, random);
-    
-    // Adicionar ornamentos usando o OrnamentFactory
-    this.ornamentFactory.addOrnaments(
-      group,
-      ornaments,
-      simulatedActivity,
-      territory,
-      colors
-    );
+  setScene(scene: Scene) {
+    this.scene = scene;
   }
   
   /**
-   * Gera uma configuração de ornamentos com base no território
+   * Set the scale for all territories
    */
-  private generateOrnamentConfig(territory: Territory, random: RandomGenerator): any {
-  let baseOrnaments = {
-    buildingCount: 0,
-    treasureCount: 0,
-    pathCount: 0,
-    mountainCount: 0,
-    treeCount: 0,
-    lakeCount: 0,
-    bridgeCount: 0,
-    specialStructures: "[]",
-    animations: "[]"
-  };
-  
-  switch (territory.type) {
-    case TerritoryType.MAINLAND:
-      baseOrnaments.buildingCount = 3 + Math.floor(random.next() * 2);
-      baseOrnaments.pathCount = 2 + Math.floor(random.next() * 2);
-      baseOrnaments.bridgeCount = 1;
-      break;
-    
-    case TerritoryType.ISLAND:
-      baseOrnaments.buildingCount = 1 + Math.floor(random.next() * 2);
-      baseOrnaments.treasureCount = 1;
-      baseOrnaments.lakeCount = 1;
-      break;
-    
-    case TerritoryType.PENINSULA:
-      baseOrnaments.buildingCount = 2 + Math.floor(random.next() * 2);
-      baseOrnaments.pathCount = 1;
-      baseOrnaments.bridgeCount = 1;
-      break;
-    
-    case TerritoryType.MOUNTAINS:
-      baseOrnaments.mountainCount = 2 + Math.floor(random.next() * 2);
-      baseOrnaments.buildingCount = 1;
-      baseOrnaments.treeCount = 3;
-      break;
-    
-    case TerritoryType.ARCHIPELAGO:
-      baseOrnaments.treasureCount = 2;
-      baseOrnaments.buildingCount = Math.floor(random.next() * 2);
-      baseOrnaments.lakeCount = 1;
-      break;
-    
-    case TerritoryType.DESERT:
-      baseOrnaments.buildingCount = 1;
-      baseOrnaments.mountainCount = 1;
-      break;
-    
-    case TerritoryType.FOREST:
-      baseOrnaments.treeCount = 5 + Math.floor(random.next() * 5);
-      baseOrnaments.buildingCount = 1;
-      baseOrnaments.lakeCount = 1;
-      baseOrnaments.pathCount = 1;
-      break;
+  setTerritoryScale(scale: number) {
+    this.territoryScale = scale;
   }
-  
-  // Aumentar quantidade de ornamentos com base no nível de fusão
-  if (territory.fusionLevel > 1) {
-    baseOrnaments.buildingCount += (territory.fusionLevel - 1);
-    baseOrnaments.treasureCount += Math.floor((territory.fusionLevel - 1) / 2);
-    baseOrnaments.pathCount += Math.floor((territory.fusionLevel - 1) / 2);
-    baseOrnaments.mountainCount += Math.floor((territory.fusionLevel - 1) / 2);
-    baseOrnaments.treeCount += (territory.fusionLevel - 1) * 2;
-    baseOrnaments.lakeCount += Math.floor(territory.fusionLevel / 2);
-    baseOrnaments.bridgeCount += Math.floor((territory.fusionLevel - 1) / 2);
-    
-    // Adicionar estruturas especiais para níveis mais altos
-    if (territory.fusionLevel >= 3) {
-      const structure = this.generateSpecialStructure(territory, random);
-      baseOrnaments.specialStructures = JSON.stringify([structure]);
-    }
-  }
-  
-  return baseOrnaments;
-}
   
   /**
-   * Gera uma estrutura especial para territórios de nível alto
+   * Create a territory based on data from the blockchain and add it to the scene
    */
-  private generateSpecialStructure(
-    territory: Territory,
-    random: RandomGenerator
-  ): any {
-    const structureTypes = ['tower', 'monument', 'bridge'];
-    const monumentStyles = ['obelisk', 'statue', 'arch'];
-    
-    const type = structureTypes[Math.floor(random.next() * structureTypes.length)];
-    
-    if (type === 'tower') {
-      return {
-        type: 'tower',
-        height: 3 + random.next() * 2,
-        width: 1 + random.next() * 0.5,
-        position: {
-          x: (random.next() - 0.5) * territory.size * 0.6,
-          y: 0,
-          z: (random.next() - 0.5) * territory.size * 0.6
-        }
+  createTerritory(territoryData: any, options: any = {}) {
+    try {
+      console.log("Creating territory with data:", territoryData);
+      
+      const networkId = territoryData?.id || 'unknown';
+      
+      // Check if already loaded
+      if (this.loadedTerritories.has(networkId) && !options.forceRecreate) {
+        console.log(`Territory ${networkId} already loaded, returning existing instance`);
+        return this.loadedTerritories.get(networkId);
+      }
+      
+      // Create random number generator with seed from visual seed
+      const seed = territoryData?.visualSeed || Math.floor(Math.random() * 1000000);
+      const random = new PRNG(seed);
+      
+      // Create main container for the territory
+      const territory = new Group();
+      territory.name = `territory-${networkId}`;
+      
+      // Generate color scheme - using robust function that handles missing palette
+      const colorScheme = generateColorScheme(territoryData, random);
+      console.log("Generated color scheme:", colorScheme);
+      
+      // Create base landscape
+      const landscape = this.createBaseLandscape(territoryData, colorScheme, random);
+      territory.add(landscape);
+      
+      // Add natural elements based on territory type
+      this.addNaturalElements(territory, territoryData, random);
+      
+      // Add buildings/structures based on activity data
+      if (territoryData?.balance || territoryData?.transactions) {
+        this.addActivityBasedElements(territory, territoryData, colorScheme, random);
+      }
+      
+      // Add special effects based on fusion level
+      if (territoryData?.fusionLevel && territoryData.fusionLevel > 0) {
+        this.addFusionEffects(territory, territoryData.fusionLevel, colorScheme, random);
+      }
+      
+      // Apply territory position
+      if (territoryData?.positionX !== undefined && territoryData?.positionZ !== undefined) {
+        territory.position.set(
+          territoryData.positionX * this.territoryScale,
+          0,
+          territoryData.positionZ * this.territoryScale
+        );
+      }
+      
+      // Scale if territory size is defined
+      if (territoryData?.size) {
+        const scale = territoryData.size / this.defaultSize;
+        territory.scale.set(scale, scale, scale);
+      }
+      
+      // Store territory metadata
+      territory.userData = {
+        networkId: networkId,
+        name: territoryData?.name || 'Unknown Territory',
+        type: territoryData?.type || 'mainland',
+        colorScheme: colorScheme,
+        balance: territoryData?.balance || 0,
+        transactions: territoryData?.transactions || 0,
+        fusionLevel: territoryData?.fusionLevel || 0,
+        lastUpdate: territoryData?.lastUpdate || Date.now()
       };
-    } else if (type === 'monument') {
-      return {
-        type: 'monument',
-        height: 4 + random.next() * 2,
-        style: monumentStyles[Math.floor(random.next() * monumentStyles.length)],
-        position: {
-          x: (random.next() - 0.5) * territory.size * 0.4,
-          y: 0,
-          z: (random.next() - 0.5) * territory.size * 0.4
-        }
-      };
-    } else { // bridge
-      const angle = random.next() * Math.PI * 2;
-      const distance = territory.size * 0.3;
-      return {
-        type: 'bridge',
-        width: 0.8 + random.next() * 0.4,
-        start: {
-          x: Math.cos(angle) * distance,
-          z: Math.sin(angle) * distance
-        },
-        end: {
-          x: Math.cos(angle + Math.PI) * distance,
-          z: Math.sin(angle + Math.PI) * distance
-        }
-      };
+      
+      // Add to scene if available
+      if (this.scene && options.addToScene !== false) {
+        this.scene.add(territory);
+      }
+      
+      // Cache for future reference
+      this.loadedTerritories.set(networkId, territory);
+      
+      return territory;
+    } catch (error) {
+      console.error("Error creating territory:", error);
+      
+      // Create fallback territory
+      const fallbackTerritory = new Group();
+      fallbackTerritory.name = `fallback-territory-${territoryData?.id || 'unknown'}`;
+      
+      const fallbackLandscape = createLandscape({
+        type: 'mainland',
+        seed: 12345,
+        size: this.defaultSize,
+        color: "#4285F4",
+        random: new PRNG(12345)
+      });
+      
+      fallbackTerritory.add(fallbackLandscape);
+      
+      // Add to scene if available
+      if (this.scene && options.addToScene !== false) {
+        this.scene.add(fallbackTerritory);
+      }
+      
+      return fallbackTerritory;
     }
   }
   
   /**
-   * Gera dados de atividade simulados para ornamentos
+   * Create multiple territories at once
    */
-  private generateSimulatedActivity(
-    territory: Territory,
-    random: RandomGenerator
-  ): any {
-    // Gerar valores baseados na semente visual para consistência
-    const baseValue = 1 + (territory.fusionLevel * 0.5) + (random.next() * 2);
+  createTerritories(territoriesData: any[]) {
+    const territories: Object3D[] = [];
     
-    return {
-      balance: baseValue + random.next() * 3,
-      nftCount: Math.floor(baseValue * 2 + random.next() * 5),
-      transactions: Math.floor(baseValue * 10 + random.next() * 50),
-      stakedAmount: baseValue * 0.5 + random.next() * 2,
-      lastUpdate: Math.floor(Date.now() / 1000 - random.next() * 86400 * 7)
+    for (const territoryData of territoriesData) {
+      const territory = this.createTerritory(territoryData);
+      if (territory) {
+        territories.push(territory);
+      }
+    }
+    
+    return territories;
+  }
+  
+  /**
+   * Update an existing territory with new data
+   */
+  updateTerritory(networkId: string, newData: any) {
+    if (!this.loadedTerritories.has(networkId)) {
+      console.warn(`Territory ${networkId} not found, creating new`);
+      return this.createTerritory(newData);
+    }
+    
+    const territory = this.loadedTerritories.get(networkId);
+    if (!territory) return null;
+    
+    // Update user data
+    territory.userData = {
+      ...territory.userData,
+      ...newData,
+      colorScheme: territory.userData.colorScheme // Keep original color scheme
     };
+    
+    // Update activity-based elements if activity data changed
+    if (
+      newData.balance !== undefined || 
+      newData.transactions !== undefined ||
+      newData.stakedAmount !== undefined
+    ) {
+      // Remove existing activity elements
+      const activityGroup = territory.getObjectByName('activity-elements');
+      if (activityGroup) {
+        territory.remove(activityGroup);
+      }
+      
+      // Add new activity elements
+      const random = new PRNG(newData.visualSeed || territory.userData.visualSeed || 12345);
+      this.addActivityBasedElements(territory, {
+        ...territory.userData,
+        ...newData
+      }, territory.userData.colorScheme, random);
+    }
+    
+    // Update fusion effects if fusion level changed
+    if (newData.fusionLevel !== undefined && newData.fusionLevel !== territory.userData.fusionLevel) {
+      // Remove existing fusion effects
+      const fusionGroup = territory.getObjectByName('fusion-effects');
+      if (fusionGroup) {
+        territory.remove(fusionGroup);
+      }
+      
+      // Add new fusion effects
+      if (newData.fusionLevel > 0) {
+        const random = new PRNG(newData.visualSeed || territory.userData.visualSeed || 12345);
+        this.addFusionEffects(territory, newData.fusionLevel, territory.userData.colorScheme, random);
+      }
+    }
+    
+    return territory;
   }
+  
+  /**
+   * Remove a territory from the scene and cache
+   */
+  removeTerritory(networkId: string) {
+    if (!this.loadedTerritories.has(networkId)) {
+      console.warn(`Territory ${networkId} not found, nothing to remove`);
+      return;
+    }
+    
+    const territory = this.loadedTerritories.get(networkId);
+    if (territory && this.scene) {
+      this.scene.remove(territory);
+    }
+    
+    this.loadedTerritories.delete(networkId);
+  }
+  
+  /**
+   * Clear all territories from the scene and cache
+   */
+  clearTerritories() {
+    if (this.scene) {
+      for (const territory of this.loadedTerritories.values()) {
+        this.scene.remove(territory);
+      }
+    }
+    
+    this.loadedTerritories.clear();
+  }
+  
+  /**
+   * Get a loaded territory by ID
+   */
+  getTerritory(networkId: string) {
+    return this.loadedTerritories.get(networkId) || null;
+  }
+  
+  /**
+   * Get all loaded territories
+   */
+  getAllTerritories() {
+    return Array.from(this.loadedTerritories.values());
+  }
+  
+  /**
+   * Create the base landscape for a territory
+   */
+  private createBaseLandscape(territoryData: any, colorScheme: any, random: PRNG) {
+    try {
+      const size = territoryData?.size || this.defaultSize;
+      
+      return createLandscape({
+        type: territoryData?.type || 'mainland',
+        seed: territoryData?.visualSeed || Math.floor(Math.random() * 1000000),
+        size: size,
+        color: colorScheme.primary,
+        random: random
+      });
+    } catch (error) {
+      console.error("Error creating base landscape:", error);
+      
+      // Create fallback landscape
+      return createLandscape({
+        type: 'mainland',
+        seed: 12345,
+        size: this.defaultSize, 
+        color: "#4285F4",
+        random: new PRNG(12345)
+      });
+    }
+  }
+  
+  /**
+   * Add natural elements specific to the territory type
+   */
+  private addNaturalElements(territory: Object3D, territoryData: any, random: PRNG) {
+    try {
+      const type = territoryData?.type || 'mainland';
+      
+      const naturalGroup = new Group();
+      naturalGroup.name = 'natural-elements';
+      
+      // Using natural colors for elements regardless of territory base color
+      switch (type) {
+        case 'forest':
+          // Add more trees with natural green color
+          addForestElements(naturalGroup, {
+            density: 0.8,
+            color: NATURAL_COLORS.forest,
+            random
+          });
+          break;
+          
+        case 'island':
+        case 'archipelago':
+          // Add water surrounding with natural blue color
+          addWaterElements(naturalGroup, {
+            coverage: 0.6,
+            color: NATURAL_COLORS.water,
+            random
+          });
+          break;
+          
+        case 'mountains':
+          // Add mountain ranges with natural gray color
+          addMountainElements(naturalGroup, {
+            height: 15,
+            count: 5,
+            color: NATURAL_COLORS.mountains,
+            random
+          });
+          break;
+          
+        case 'desert':
+          // Add desert features with natural sand color
+          territory.traverse(child => {
+            if (child instanceof Mesh && child.material instanceof MeshStandardMaterial) {
+              child.material = new MeshStandardMaterial({
+                color: new Color(NATURAL_COLORS.desert),
+                roughness: 0.8,
+                metalness: 0.1
+              });
+            }
+          });
+          break;
+          
+        case 'peninsula':
+          // Add water on one side and maybe some trees
+          addWaterElements(naturalGroup, {
+            coverage: 0.3,
+            partial: true,
+            color: NATURAL_COLORS.water,
+            random
+          });
+          
+          addForestElements(naturalGroup, {
+            density: 0.3,
+            color: NATURAL_COLORS.forest,
+            random
+          });
+          break;
+          
+        default: // mainland
+          // Add some of everything in moderation
+          if (random.next() > 0.5) {
+            addForestElements(naturalGroup, {
+              density: 0.2,
+              color: NATURAL_COLORS.forest,
+              random
+            });
+          }
+          
+          if (random.next() > 0.7) {
+            addWaterElements(naturalGroup, {
+              coverage: 0.1,
+              color: NATURAL_COLORS.water,
+              random
+            });
+          }
+          
+          if (random.next() > 0.8) {
+            addMountainElements(naturalGroup, {
+              height: 8,
+              count: 2,
+              color: NATURAL_COLORS.mountains,
+              random
+            });
+          }
+          break;
+      }
+      
+      territory.add(naturalGroup);
+    } catch (error) {
+      console.error("Error adding natural elements:", error);
+      // Just continue without adding natural elements
+    }
+  }
+  
+  /**
+   * Add elements based on on-chain activity
+   */
+  private addActivityBasedElements(territory: Object3D, territoryData: any, colorScheme: any, random: PRNG) {
+    try {
+      const balance = territoryData?.balance || 0;
+      const transactions = territoryData?.transactions || 0;
+      const stakedAmount = territoryData?.stakedAmount || 0;
+      
+      const activityGroup = new Group();
+      activityGroup.name = 'activity-elements';
+      
+      // Scale to reasonable values
+      const buildingCount = Math.min(10, Math.max(1, Math.floor(transactions / 10) + 1));
+      const buildingScale = Math.min(2, Math.max(0.5, (balance / 1000) + 0.5));
+      
+      // Add buildings with natural building color but accent color highlights
+      addBuildingElements(activityGroup, {
+        count: buildingCount,
+        scale: buildingScale,
+        baseColor: NATURAL_COLORS.buildings,
+        accentColor: colorScheme.accent,
+        random
+      });
+      
+      territory.add(activityGroup);
+    } catch (error) {
+      console.error("Error adding activity-based elements:", error);
+      // Just continue without adding activity elements
+    }
+  }
+  
+  /**
+   * Add special effects based on fusion level
+   */
+  private addFusionEffects(territory: Object3D, fusionLevel: number, colorScheme: any, random: PRNG) {
+    try {
+      const effectsGroup = new Group();
+      effectsGroup.name = 'fusion-effects';
+      
+      // More impressive effects for higher fusion levels
+      const intensity = 0.5 + (fusionLevel * 0.2);
+      const effectColor = new Color(colorScheme.accent);
+      
+      // Add glow effect
+      if (fusionLevel >= 1) {
+        const light = new DirectionalLight(effectColor, intensity);
+        light.position.set(0, 50, 0);
+        light.target = territory;
+        effectsGroup.add(light);
+      }
+      
+      // Add more impressive effects for higher fusion levels...
+      
+      territory.add(effectsGroup);
+    } catch (error) {
+      console.error("Error adding fusion effects:", error);
+      // Just continue without adding effects
+    }
+  }
+}
+
+// Implementation of the required generator functions
+// (These would be imported from separate files in practice)
+
+/**
+ * Create base landscape for a territory
+ */
+ function createLandscape(options: any = {}) {
+  // This function would create the base terrain mesh
+  // Simplified implementation for this example
+  const { type = 'mainland', size = 100, color = '#4285F4', random } = options;
+  
+  // Create a simple landscape mesh
+  // Create a simple landscape mesh
+const mesh = new Mesh(
+  new PlaneGeometry(size, size, 1, 1),  // <-- Actual geometry object
+  new MeshStandardMaterial({ 
+    color: new Color(color),
+    roughness: 0.7,
+    metalness: 0.1,
+    side: DoubleSide
+  })
+);
+  
+  mesh.name = 'landscape-base';
+  return mesh;
+}
+
+/**
+ * Add forest elements to a territory
+ */
+ function addForestElements(target: Object3D, options: any = {}) {
+  // This function would add trees and vegetation
+  // Simplified implementation for this example
+  const { density = 0.3, color = '#2E7D32', random } = options;
+  
+  // Create trees based on density
+  const treeCount = Math.floor(20 * density);
+  
+  for (let i = 0; i < treeCount; i++) {
+    // Create a tree mesh
+    const tree = new Group();
+    /* tree implementation */
+    
+    // Position randomly on the territory
+    tree.position.set(
+      (random.next() - 0.5) * 80,
+      0,
+      (random.next() - 0.5) * 80
+    );
+    
+    target.add(tree);
+  }
+  
+  return target;
+}
+
+/**
+ * Add water elements to a territory
+ */
+ function addWaterElements(target: Object3D, options: any = {}) {
+  // This function would add lakes, rivers, etc.
+  // Simplified implementation for this example
+  const { coverage = 0.3, color = '#1565C0', partial = false, random } = options;
+  
+  // Create water mesh
+  const water = new Mesh(
+
+    new MeshStandardMaterial({
+      color: new Color(color),
+      transparent: true,
+      opacity: 0.8,
+      roughness: 0.1,
+      metalness: 0.3
+    })
+  );
+  
+  water.position.y = -0.5; // Slightly below ground
+  
+  target.add(water);
+  return target;
+}
+
+/**
+ * Add mountain elements to a territory
+ */
+ function addMountainElements(target: Object3D, options: any = {}) {
+  // This function would add mountains
+  // Simplified implementation for this example
+  const { height = 10, count = 3, color = '#757575', random } = options;
+  
+  for (let i = 0; i < count; i++) {
+    // Create a mountain mesh
+    const mountain = new Mesh(
+
+      new MeshStandardMaterial({
+        color: new Color(color),
+        roughness: 0.9,
+        metalness: 0.1
+      })
+    );
+    
+    // Position randomly on the territory
+    mountain.position.set(
+      (random.next() - 0.5) * 70,
+      0,
+      (random.next() - 0.5) * 70
+    );
+    
+    target.add(mountain);
+  }
+  
+  return target;
 }

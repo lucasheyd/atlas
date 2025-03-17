@@ -44,6 +44,8 @@ const AtlasViewer: React.FC<AtlasViewerProps> = ({
   const [usingFallback, setUsingFallback] = useState<boolean>(false);
   const [territoryData, setTerritoryData] = useState<ActivityData | null>(null);
   const [territoryLoading, setTerritoryLoading] = useState<boolean>(false);
+
+
   
   // Load data with optimization if enabled
   useEffect(() => {
