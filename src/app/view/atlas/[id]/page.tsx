@@ -1,7 +1,7 @@
-// app/view/atlas/[id]/page.tsx
+// app/view/atlas/[id]/page.tsx - Otimizado
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card';
 import AtlasViewer from '../../../../Maps3d/3d/components/AtlasViewer';
@@ -16,6 +16,38 @@ import { Button } from '../../../../components/ui/button';
 import { ActivityData } from '../../../../Maps3d/types/ActivityData';
 import { NFTService } from '../../../../services/NFTService';
 import { TerritoryDataService } from '../../../../services/TerritoryDataService';
+import { Loader2 } from 'lucide-react';
+
+// Cache local para dados de NFT
+interface NFTDataCache {
+  data: any;
+  timestamp: number;
+  ttl: number;
+}
+
+// Implementação de cache na memória para reduzir chamadas
+const memoryCacheMap = new Map<string, NFTDataCache>();
+
+function getFromCache(key: string): any | null {
+  const cached = memoryCacheMap.get(key);
+  if (!cached) return null;
+  
+  // Verificar expiração
+  if (Date.now() > cached.timestamp + cached.ttl) {
+    memoryCacheMap.delete(key);
+    return null;
+  }
+  
+  return cached.data;
+}
+
+function setToCache(key: string, data: any, ttl = 5 * 60 * 1000): void {
+  memoryCacheMap.set(key, {
+    data,
+    timestamp: Date.now(),
+    ttl
+  });
+}
 
 // Componentes de fallback para segurança
 const FallbackComponent = ({ name, ...props }: { name: string, [key: string]: any }) => {
@@ -60,8 +92,166 @@ const AtlasNFTView = () => {
   const [nftName, setNftName] = useState<string>("");
   const [contractInfo, setContractInfo] = useState<{ totalSupply: number }>({ totalSupply: 0 });
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  
+  // Flag para mostrar se estamos usando dados de fallback
+  const [usingFallback, setUsingFallback] = useState(false);
 
-  // Efeito para verificar a existência do token
+  // Verificar existência do token com cache
+  const checkTokenExistence = useCallback(async () => {
+    // Verificar cache primeiro
+    const cacheKey = `token_exists_${tokenId}`;
+    const cachedData = getFromCache(cacheKey);
+    
+    if (cachedData !== null) {
+      console.log(`Using cached token existence: ${cachedData}`);
+      return cachedData;
+    }
+    
+    try {
+      const exists = await NFTService.tokenExists(tokenId);
+      // Guardar no cache por 10 minutos
+      setToCache(cacheKey, exists, 10 * 60 * 1000);
+      return exists;
+    } catch (err) {
+      console.error("Error checking token existence:", err);
+      return null;
+    }
+  }, [tokenId]);
+
+  // Buscar dados NFT com cache
+  const getNFTData = useCallback(async () => {
+    // Verificar cache primeiro
+    const cacheKey = `nft_data_${tokenId}`;
+    const cachedData = getFromCache(cacheKey);
+    
+    if (cachedData !== null) {
+      console.log(`Using cached NFT data for token #${tokenId}`);
+      return cachedData;
+    }
+    
+    try {
+      const data = await NFTService.getNFTData(tokenId);
+      // Guardar no cache por 5 minutos
+      setToCache(cacheKey, data, 5 * 60 * 1000);
+      return data;
+    } catch (err) {
+      console.error("Error fetching NFT data:", err);
+      throw err;
+    }
+  }, [tokenId]);
+
+  // Função otimizada para carregar dados reais do NFT
+  const loadRealNFTData = useCallback(async () => {
+    try {
+      setUsingFallback(false);
+      
+      // Buscar dados do NFT do contrato (owner, nível de fusão, redes ativas)
+      const nftData = await getNFTData();
+      
+      // Configurar dados do NFT
+      setOwnerAddress(nftData.owner);
+      setFusionLevel(nftData.fusionLevel);
+      setNftName(nftData.customName || `Crypto Atlas #${tokenId}`);
+      
+      // Array de redes ativas (do contrato)
+      const activeNetworks = nftData.activeNetworks;
+      
+      // Validar redes e nível de fusão
+      const validation = AtlasModuleLoader.validateNetworks(
+        tokenId,
+        activeNetworks,
+        nftData.fusionLevel
+      );
+      
+      if (!validation.valid) {
+        setValidationErrors(validation.errors);
+      }
+      
+      // Carregar territórios
+      const loadedTerritories = AtlasModuleLoader.loadTerritories(
+        tokenId,
+        activeNetworks,
+        nftData.fusionLevel
+      );
+      setTerritories(loadedTerritories);
+      
+      // Carregar conexões
+      const loadedConnections = AtlasModuleLoader.loadConnections(
+        loadedTerritories,
+        DEFAULT_NETWORK_CONNECTIONS
+      );
+      setConnections(loadedConnections);
+      
+      // Mostrar dados em um curto período para uma transição suave
+      setTimeout(() => {
+        setLoading(false);
+      }, 300);
+    } catch (err) {
+      console.error("Error loading NFT data:", err);
+      // Em caso de erro, carregamos os dados de fallback
+      loadFallbackNFTData();
+    }
+  }, [tokenId, getNFTData]);
+
+  // Função otimizada para carregar dados de fallback do NFT
+  const loadFallbackNFTData = useCallback(async () => {
+    try {
+      console.log("Using fallback data for demonstration");
+      setUsingFallback(true);
+      
+      const nftFusionLevel = Math.max(1, (parseInt(tokenId) % 5) || 1);
+      
+      setOwnerAddress("0xDemoAddress1234567890123456789012345678AbCd");
+      setFusionLevel(nftFusionLevel);
+      setNftName(`Crypto Atlas #${tokenId} (Demo)`);
+      
+      // Gerar redes ativas baseado no tokenId
+      const availableNetworks = [
+        "ethereum", "polygon", "arbitrum", "optimism", 
+        "avalanche", "base", "zksync"
+      ];
+      
+      // Definir quais redes vão estar ativas
+      let activeNetworks = ["ethereum"]; // Ethereum sempre ativo
+      
+      // Adicionar mais redes baseado no fusion level
+      const additionalNetworks = Math.min(availableNetworks.length - 1, nftFusionLevel * 2 - 1);
+      for (let i = 0; i < additionalNetworks; i++) {
+        if (i + 1 < availableNetworks.length) {
+          activeNetworks.push(availableNetworks[i + 1]);
+        }
+      }
+      
+      // Carregar territórios com esses dados de fallback
+      const loadedTerritories = AtlasModuleLoader.loadTerritories(
+        tokenId,
+        activeNetworks,
+        nftFusionLevel
+      );
+      setTerritories(loadedTerritories);
+      
+      // Carregar conexões
+      const loadedConnections = AtlasModuleLoader.loadConnections(
+        loadedTerritories,
+        DEFAULT_NETWORK_CONNECTIONS
+      );
+      setConnections(loadedConnections);
+      
+      // Definir que o token existe para exibição
+      setTokenExists(true);
+      
+      // Mostrar dados em um curto período para uma transição suave
+      setTimeout(() => {
+        setLoading(false);
+      }, 300);
+    } catch (err) {
+      console.error("Error loading fallback data:", err);
+      setError("Failed to load Atlas data. Please try again later.");
+      setLoading(false);
+    }
+  }, [tokenId]);
+
+  // Efeito principal usando as funções otimizadas
   useEffect(() => {
     if (!tokenId) {
       setError("Token ID not found");
@@ -69,168 +259,90 @@ const AtlasNFTView = () => {
       return;
     }
 
-    const checkTokenExistence = async () => {
+    const loadData = async () => {
+      setLoading(true);
+      
       try {
         // Verificar se o token existe antes de prosseguir
-        const exists = await NFTService.tokenExists(tokenId);
+        const exists = await checkTokenExistence();
         setTokenExists(exists);
         
-        if (!exists) {
+        if (exists === false) {
           console.log(`Token #${tokenId} does not exist.`);
           
-          // Obter informações gerais do contrato
-          const info = await NFTService.getContractInfo();
-          setContractInfo(info);
+          // Obter informações gerais do contrato - paralelizado
+          NFTService.getContractInfo()
+            .then(info => setContractInfo(info))
+            .catch(err => console.error("Error fetching contract info:", err));
           
-          setError(`Token #${tokenId} does not exist. Valid range: 1 to ${info.totalSupply}.`);
+          setError(`Token #${tokenId} does not exist. Valid range: 1 to ${contractInfo.totalSupply || '?'}.`);
           setLoading(false);
           return;
         }
         
-        // Se o token existe, prosseguir com o carregamento dos dados
-        loadRealNFTData();
+        // Se o token existe ou temos incerteza (null), prosseguir com o carregamento dos dados
+        await loadRealNFTData();
       } catch (err) {
-        console.error("Error checking token existence:", err);
+        console.error("Error in main data loading flow:", err);
         // Falha silenciosa e passa para modo de demo/fallback
         loadFallbackNFTData();
       }
     };
-    
-    // Função para carregar dados reais do NFT
-    const loadRealNFTData = async () => {
-      try {
-        // Buscar dados do NFT do contrato (owner, nível de fusão, redes ativas)
-        const nftData = await NFTService.getNFTData(tokenId);
-        
-        // Configurar dados do NFT
-        setOwnerAddress(nftData.owner);
-        setFusionLevel(nftData.fusionLevel);
-        setNftName(nftData.customName || `Crypto Atlas #${tokenId}`);
-        
-        // Array de redes ativas (do contrato)
-        const activeNetworks = nftData.activeNetworks;
-        
-        // Validar redes e nível de fusão
-        const validation = AtlasModuleLoader.validateNetworks(
-          tokenId,
-          activeNetworks,
-          nftData.fusionLevel
-        );
-        
-        if (!validation.valid) {
-          setValidationErrors(validation.errors);
-        }
-        
-        // Carregar territórios
-        const loadedTerritories = AtlasModuleLoader.loadTerritories(
-          tokenId,
-          activeNetworks,
-          nftData.fusionLevel
-        );
-        setTerritories(loadedTerritories);
-        
-        // Carregar conexões
-        const loadedConnections = AtlasModuleLoader.loadConnections(
-          loadedTerritories,
-          DEFAULT_NETWORK_CONNECTIONS
-        );
-        setConnections(loadedConnections);
-        
-        setTimeout(() => {
-          setLoading(false);
-        }, 500);
-      } catch (err) {
-        console.error("Error loading NFT data:", err);
-        // Em caso de erro, carregamos os dados de fallback
-        loadFallbackNFTData();
-      }
-    };
-    
-    // Função para carregar dados de fallback do NFT (quando há erros)
-    const loadFallbackNFTData = async () => {
-      try {
-        console.log("Using fallback data for demonstration");
-        const nftFusionLevel = Math.max(1, (parseInt(tokenId) % 5) || 1);
-        
-        setOwnerAddress("0xDemoAddress1234567890123456789012345678AbCd");
-        setFusionLevel(nftFusionLevel);
-        setNftName(`Crypto Atlas #${tokenId} (Demo)`);
-        
-        // Gerar redes ativas baseado no tokenId
-        const availableNetworks = [
-          "ethereum", "polygon", "arbitrum", "optimism", 
-          "avalanche", "base", "zksync"
-        ];
-        
-        // Definir quais redes vão estar ativas
-        let activeNetworks = ["ethereum"]; // Ethereum sempre ativo
-        
-        // Adicionar mais redes baseado no fusion level
-        const additionalNetworks = Math.min(availableNetworks.length - 1, nftFusionLevel * 2 - 1);
-        for (let i = 0; i < additionalNetworks; i++) {
-          if (i + 1 < availableNetworks.length) {
-            activeNetworks.push(availableNetworks[i + 1]);
-          }
-        }
-        
-        // Carregar territórios com esses dados de fallback
-        const loadedTerritories = AtlasModuleLoader.loadTerritories(
-          tokenId,
-          activeNetworks,
-          nftFusionLevel
-        );
-        setTerritories(loadedTerritories);
-        
-        // Carregar conexões
-        const loadedConnections = AtlasModuleLoader.loadConnections(
-          loadedTerritories,
-          DEFAULT_NETWORK_CONNECTIONS
-        );
-        setConnections(loadedConnections);
-        
-        // Definir que o token existe para exibição
-        setTokenExists(true);
-        
-        setTimeout(() => {
-          setLoading(false);
-        }, 500);
-      } catch (err) {
-        console.error("Error loading fallback data:", err);
-        setError("Failed to load Atlas data. Please try again later.");
-        setLoading(false);
-      }
-    };
-    
-    // Iniciar verificação
-    checkTokenExistence();
-  }, [tokenId]);
 
-  // Função para carregar dados de atividade
-  const loadRealActivityData = async (territoryId: string) => {
+    loadData();
+    
+    // Função de limpeza
+    return () => {
+      // Limpar timeouts, etc.
+    };
+  }, [tokenId, checkTokenExistence, loadRealNFTData, loadFallbackNFTData, contractInfo.totalSupply]);
+
+  // Função para carregar dados de atividade com cache
+  const loadTerritoryActivity = useCallback(async (territoryId: string) => {
     if (!tokenId || !territoryId) return;
     
+    setActivityLoading(true);
+    
+    // Verificar cache
+    const cacheKey = `activity_${tokenId}_${territoryId}`;
+    const cachedData = getFromCache(cacheKey);
+    
+    if (cachedData !== null) {
+      console.log(`Using cached activity data for territory ${territoryId}`);
+      setActivityData(cachedData);
+      setActivityLoading(false);
+      return;
+    }
+    
     try {
-      setActivityLoading(true);
-      
-      // Tentar obter dados do contrato primeiro
+      // Tentativa 1: Dados do contrato
       let data = await NFTService.getTerritoryContractData(tokenId, territoryId);
       
-      // Se não houver dados no contrato, buscar diretamente da blockchain
-      if (data.balance === 0 && data.transactions === 0 && ownerAddress && ownerAddress !== '0x0000000000000000000000000000000000000000') {
+      // Se não houver dados significativos no contrato e temos um endereço de carteira válido, 
+      // buscar diretamente da blockchain
+      if (data.balance === 0 && data.transactions === 0 && 
+          ownerAddress && ownerAddress !== '0x0000000000000000000000000000000000000000' && 
+          !usingFallback) {
         try {
           const realData = await TerritoryDataService.fetchActivityData(territoryId, ownerAddress);
           
-          // Usar dados da blockchain
-          data = realData;
+          // Se conseguimos dados reais, usá-los
+          if (realData.balance > 0 || realData.transactions > 0) {
+            data = realData;
+          }
         } catch (error) {
           console.error("Error fetching real blockchain data:", error);
         }
       }
       
+      // Guardar no cache
+      setToCache(cacheKey, data, 2 * 60 * 1000); // 2 minutos
+      
       setActivityData(data);
     } catch (error) {
       console.error("Error loading territory activity data:", error);
-      // Gerar dados simulados
+      
+      // Gerar dados simulados para fallback
       const seed = parseInt(tokenId) * territoryId.length;
       const randomValue = (min: number, max: number) => {
         const x = Math.sin(seed * 0.1) * 10000;
@@ -238,25 +350,50 @@ const AtlasNFTView = () => {
         return min + Math.floor(r * (max - min));
       };
       
-      setActivityData({
+      const fallbackData = {
         balance: randomValue(0, 10) + randomValue(0, 100) / 100,
         nftCount: randomValue(0, 20),
         transactions: randomValue(10, 500),
         stakedAmount: randomValue(0, 5) + randomValue(0, 100) / 100,
         lastUpdate: Math.floor(Date.now() / 1000) - randomValue(0, 86400 * 7)
-      });
+      };
+      
+      setActivityData(fallbackData);
     } finally {
       setActivityLoading(false);
     }
-  };
+  }, [tokenId, ownerAddress, usingFallback]);
 
   // Handler para clique em território
-  const handleTerritoryClick = (territoryId: string) => {
+  const handleTerritoryClick = useCallback((territoryId: string) => {
     if (!territoryId) return;
     
     setSelectedTerritory(territoryId);
-    loadRealActivityData(territoryId);
-  };
+    loadTerritoryActivity(territoryId);
+  }, [loadTerritoryActivity]);
+
+  // Pré-carregamento de dados para os territórios visíveis
+  useEffect(() => {
+    // Se temos territórios visíveis, podemos pré-carregar os dados de atividade
+    // para melhorar a experiência do usuário quando clicar neles
+    if (territories.length > 0 && !loading && !activityLoading) {
+      // Pré-carregando apenas os 3 primeiros territórios para economizar recursos
+      territories.slice(0, 3).forEach(territory => {
+        // Verificar se já temos os dados em cache
+        const cacheKey = `activity_${tokenId}_${territory.id}`;
+        if (!getFromCache(cacheKey)) {
+          // Carregar em segundo plano de forma silenciosa, sem atualizar o estado
+          NFTService.getTerritoryContractData(tokenId, territory.id)
+            .then(data => {
+              setToCache(cacheKey, data, 2 * 60 * 1000); // 2 minutos
+            })
+            .catch(() => {
+              // Ignorar erros no pré-carregamento
+            });
+        }
+      });
+    }
+  }, [territories, loading, activityLoading, tokenId]);
 
   // Exibir erro se o token não existir
   if (error) {
@@ -296,10 +433,10 @@ const AtlasNFTView = () => {
     );
   }
 
-  // Find the selected territory
-  const selectedTerritoryData = selectedTerritory
-    ? territories.find(t => t.id === selectedTerritory)
-    : null;
+  // Find the selected territory with useMemo
+  const selectedTerritoryData = useMemo(() => 
+    selectedTerritory ? territories.find(t => t.id === selectedTerritory) : null
+  , [selectedTerritory, territories]);
 
   return (
     <SafeContainer>
@@ -308,6 +445,7 @@ const AtlasNFTView = () => {
         <h2 className="text-xl text-center text-muted-foreground mb-8">
           Token #{tokenId} 
           {fusionLevel > 1 && <span className="ml-2 text-sm text-amber-500">Fusion Level {fusionLevel}</span>}
+          {usingFallback && <span className="ml-2 text-xs text-blue-500">(Demo Mode)</span>}
         </h2>
         
         {/* Mostrar erros de validação */}
@@ -333,7 +471,7 @@ const AtlasNFTView = () => {
                 <CardContent className="p-2 sm:p-6">
                   {loading ? (
                     <div className="w-full aspect-square bg-gray-100 dark:bg-gray-800 flex flex-col items-center justify-center rounded-lg">
-                      <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary mb-4"></div>
+                      <Loader2 className="h-16 w-16 animate-spin text-primary mb-4" />
                       <p className="text-muted-foreground">Loading Atlas data...</p>
                     </div>
                   ) : (
@@ -391,7 +529,9 @@ const AtlasNFTView = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Data Source:</span>
-                      <span className="font-medium text-green-600">Blockchain</span>
+                      <span className="font-medium text-green-600">
+                        {usingFallback ? 'Demo Data' : 'Blockchain'}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -402,7 +542,7 @@ const AtlasNFTView = () => {
                   {activityLoading ? (
                     <Card>
                       <CardContent className="p-6 flex justify-center items-center h-40">
-                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
                       </CardContent>
                     </Card>
                   ) : (
