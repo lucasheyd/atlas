@@ -61,9 +61,13 @@ export class TerritoryFactory {
    * Create a territory based on data from the blockchain and add it to the scene
    */
   createTerritory(territoryData: any, options: any = {}) {
-  try {
-    console.log("Creating territory with data:", territoryData);
-    
+   try {
+    console.log("Creating territory with data:", {
+      id: territoryData?.id,
+      position: territoryData?.position,
+      type: territoryData?.type
+    });
+
     const networkId = territoryData?.id || 'unknown';
     
     // Check if already loaded
@@ -95,6 +99,16 @@ export class TerritoryFactory {
     const ArchipelagoRenderer = require('./ArchipelagoRenderer').ArchipelagoRenderer;
     const DesertRenderer = require('./DesertRenderer').DesertRenderer;
     const ForestRenderer = require('./ForestRenderer').ForestRenderer;
+
+    // Definir posição do território antes de adicionar o mesh
+    if (territoryData?.position) {
+      console.log("Setting territory position:", territoryData.position);
+      territory.position.set(
+        territoryData.position[0], 
+        territoryData.position[1], 
+        territoryData.position[2]
+      );
+    }
     
     // Create renderer based on territory type
     switch (territoryData.type) {

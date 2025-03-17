@@ -23,6 +23,28 @@ export class ConnectionManager {
     connections: NetworkConnection[],
     territories: Map<string, THREE.Object3D>
   ): void {
+    console.log("Creating connections", { connectionsCount: connections.length });
+
+    connections.forEach(connection => {
+    const sourceObj = territories.get(connection.source);
+    const targetObj = territories.get(connection.target);
+    
+    if (sourceObj && targetObj) {
+      console.log(`Connection from ${connection.source} to ${connection.target}`, {
+        sourcePosition: {
+          x: sourceObj.position.x,
+          y: sourceObj.position.y,
+          z: sourceObj.position.z
+        },
+        targetPosition: {
+          x: targetObj.position.x,
+          y: targetObj.position.y,
+          z: targetObj.position.z
+        }
+      });
+    }
+  });
+
     // Limpar conexões existentes
     this.connections.forEach(conn => this.scene.remove(conn));
     this.connections = [];

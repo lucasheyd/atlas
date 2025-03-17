@@ -17,22 +17,21 @@ export class ConnectionManager {
    * Creates connections between territories
    */
   public createConnections(
-    connections: NetworkConnection[],
-    territories: Map<string, THREE.Object3D>
-  ): void {
-    console.log(`Creating ${connections.length} connections between territories`);
+  connections: NetworkConnection[],
+  territories: Map<string, THREE.Object3D>
+): void {
+  console.log(`Creating ${connections.length} connections between territories`);
+  
+  connections.forEach(connection => {
+    const sourceObj = territories.get(connection.source);
+    const targetObj = territories.get(connection.target);
     
-    // Clear existing connections
-    this.connections.forEach(conn => this.scene.remove(conn));
-    this.connections = [];
-    this.pathMarkers = [];
+    console.log(`Connection from ${connection.source} to ${connection.target}`);
     
-    // Create new connections
-    connections.forEach(connection => {
-      const sourceObj = territories.get(connection.source);
-      const targetObj = territories.get(connection.target);
-      
-      if (sourceObj && targetObj) {
+    if (sourceObj && targetObj) {
+      console.log('Source position:', sourceObj.position);
+      console.log('Target position:', targetObj.position);
+
         console.log(`Creating connection from ${connection.source} to ${connection.target}`);
         
         const sourcePosition = new THREE.Vector3();

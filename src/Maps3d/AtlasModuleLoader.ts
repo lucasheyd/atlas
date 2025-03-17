@@ -34,24 +34,28 @@ export class AtlasModuleLoader {
     networksToLoad
   });
 
- 
-  return networksToLoad.map(networkId => {
+  return networksToLoad.map((networkId, index) => {
     const network = DEFAULT_NETWORKS[networkId];
+    const visualData = DEFAULT_NETWORK_VISUAL_DATA[networkId];
     
-    // Gerar seed visual consistente
-    const visualSeed = this.generateSeed(parseInt(tokenId), networkId);
+    console.log(`Territory ${networkId} positioning:`, {
+      networkPositionX: network.positionX,
+      visualDataPositionZ: visualData?.positionZ,
+      size: visualData?.size
+    });
 
-   const colorGenetics = TerritoryColorService.generateInitialColorGenetics(tokenId, networkId);
-   const colorScheme = TerritoryColorService.generateColorSchemeFromGenetics(colorGenetics);
+    const visualSeed = this.generateSeed(parseInt(tokenId), networkId);
+    const colorGenetics = TerritoryColorService.generateInitialColorGenetics(tokenId, networkId);
+    const colorScheme = TerritoryColorService.generateColorSchemeFromGenetics(colorGenetics);
     
-    return {
+    const territory: Territory = {
       id: networkId,
       name: network.name,
       type: network.type as TerritoryType,
       position: [
         network.positionX, 
         0, 
-        DEFAULT_NETWORK_VISUAL_DATA[networkId]?.positionZ || 0
+        visualData?.positionZ ?? 0  // Usando nullish coalescing para garantir valor
       ],
       color: network.color,
       borderColor: network.borderColor,
@@ -63,59 +67,18 @@ export class AtlasModuleLoader {
       shapeVariant: Math.floor(visualSeed / 6) % 4,
       rareTraits: 0,
       primaryColor: colorScheme.primary,
-     secondaryColor: colorScheme.secondary,
-     accentColor: colorScheme.accent,
-     outlineColor: colorScheme.outline,
-     colorGenetics: JSON.stringify(colorGenetics) // Para armazenar no tokenURI
+      secondaryColor: colorScheme.secondary,
+      accentColor: colorScheme.accent,
+      outlineColor: colorScheme.outline,
+      colorGenetics: JSON.stringify(colorGenetics)
     };
+
+    console.log(`Territory ${networkId} final position:`, territory.position);
+
+    return territory;
   });
 }
   
-  public static loadTerritories(
-    tokenId: string, 
-    activeNetworks: string[] = [], 
-    fusionLevel: number = 1
-  ): Territory[] {
-    const networksToLoad = activeNetworks.length > 0 
-      ? activeNetworks.slice(0, fusionLevel * 2)
-      : Object.keys(DEFAULT_NETWORKS).slice(0, fusionLevel * 2);
-
-    return networksToLoad.map(networkId => {
-      const network = DEFAULT_NETWORKS[networkId];
-      
-      // Gerar seed visual consistente
-      const visualSeed = this.generateSeed(parseInt(tokenId), networkId);
-      
-      // Gerar cores genéticas
-      const colorGenetics = TerritoryColorService.generateInitialColorGenetics(tokenId, networkId);
-      const colorScheme = TerritoryColorService.generateColorSchemeFromGenetics(colorGenetics);
-      
-      return {
-        id: networkId,
-        name: network.name,
-        type: network.type as TerritoryType,
-        position: [
-          network.positionX, 
-          0, 
-          DEFAULT_NETWORK_VISUAL_DATA[networkId]?.positionZ || 0
-        ],
-        color: network.color,
-        borderColor: network.borderColor,
-        size: DEFAULT_NETWORK_VISUAL_DATA[networkId]?.size / 10 || 1,
-        rotation: 0,
-        visualSeed,
-        fusionLevel: fusionLevel,
-        colorPalette: visualSeed % 6,
-        shapeVariant: Math.floor(visualSeed / 6) % 4,
-        rareTraits: 0,
-        primaryColor: colorScheme.primary,
-        secondaryColor: colorScheme.secondary,
-        accentColor: colorScheme.accent,
-        outlineColor: colorScheme.outline
-      };
-    });
-  }
-
   /**
    * Carrega as conexões relevantes para os territórios ativos
    * @param territories Lista de territórios ativos

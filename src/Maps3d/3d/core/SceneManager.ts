@@ -106,7 +106,11 @@ export class SceneManager {
    * @param territories List of territories to render
    */
   public async loadTerritories(territories: Territory[]): Promise<void> {
-    console.log(`Loading ${territories.length} territories`);
+  console.log(`Loading ${territories.length} territories`);
+  
+  territories.forEach(territory => {
+    console.log(`Territory ${territory.id} position:`, territory.position);
+  });
     
     // Clear existing territories
     this.territories.forEach(territory => {
@@ -167,9 +171,21 @@ export class SceneManager {
    */
   private loadSingleTerritory(territory: Territory): void {
     try {
-      console.log(`Loading territory ${territory.id}`);
+    console.log(`Loading territory ${territory.id}`, {
+      position: territory.position,
+      type: territory.type,
+      name: territory.name
+    });
+
       // Create territory with integrated ornaments
       const territoryObject = this.territoryFactory.createTerritory(territory);
+
+    // Log da posição do objeto
+    console.log(`Territory ${territory.id} object position:`, {
+      x: territoryObject.position.x,
+      y: territoryObject.position.y,
+      z: territoryObject.position.z
+    });
       
       // Add to scene and territory map
       this.scene.add(territoryObject);
