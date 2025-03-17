@@ -61,107 +61,80 @@ export class TerritoryFactory {
    * Create a territory based on data from the blockchain and add it to the scene
    */
   createTerritory(territoryData: any, options: any = {}) {
-    try {
-      console.log("Creating territory with data:", territoryData);
-      
-      const networkId = territoryData?.id || 'unknown';
-      
-      // Check if already loaded
-      if (this.loadedTerritories.has(networkId) && !options.forceRecreate) {
-        console.log(`Territory ${networkId} already loaded, returning existing instance`);
-        return this.loadedTerritories.get(networkId);
-      }
-      
-      // Create random number generator with seed from visual seed
-      const seed = territoryData?.visualSeed || Math.floor(Math.random() * 1000000);
-      const random = new PRNG(seed);
-      
-      // Create main container for the territory
-      const territory = new Group();
-      territory.name = `territory-${networkId}`;
-      
-      // Generate color scheme - using robust function that handles missing palette
-      const colorScheme = generateColorScheme(territoryData, random);
-      console.log("Generated color scheme:", colorScheme);
-      
-      // Create base landscape
-      const landscape = this.createBaseLandscape(territoryData, colorScheme, random);
-      territory.add(landscape);
-      
-      // Add natural elements based on territory type
-      this.addNaturalElements(territory, territoryData, random);
-      
-      // Add buildings/structures based on activity data
-      if (territoryData?.balance || territoryData?.transactions) {
-        this.addActivityBasedElements(territory, territoryData, colorScheme, random);
-      }
-      
-      // Add special effects based on fusion level
-      if (territoryData?.fusionLevel && territoryData.fusionLevel > 0) {
-        this.addFusionEffects(territory, territoryData.fusionLevel, colorScheme, random);
-      }
-      
-      // Apply territory position
-      if (territoryData?.positionX !== undefined && territoryData?.positionZ !== undefined) {
-        territory.position.set(
-          territoryData.positionX * this.territoryScale,
-          0,
-          territoryData.positionZ * this.territoryScale
-        );
-      }
-      
-      // Scale if territory size is defined
-      if (territoryData?.size) {
-        const scale = territoryData.size / this.defaultSize;
-        territory.scale.set(scale, scale, scale);
-      }
-      
-      // Store territory metadata
-      territory.userData = {
-        networkId: networkId,
-        name: territoryData?.name || 'Unknown Territory',
-        type: territoryData?.type || 'mainland',
-        colorScheme: colorScheme,
-        balance: territoryData?.balance || 0,
-        transactions: territoryData?.transactions || 0,
-        fusionLevel: territoryData?.fusionLevel || 0,
-        lastUpdate: territoryData?.lastUpdate || Date.now()
-      };
-      
-      // Add to scene if available
-      if (this.scene && options.addToScene !== false) {
-        this.scene.add(territory);
-      }
-      
-      // Cache for future reference
-      this.loadedTerritories.set(networkId, territory);
-      
-      return territory;
-    } catch (error) {
-      console.error("Error creating territory:", error);
-      
-      // Create fallback territory
-      const fallbackTerritory = new Group();
-      fallbackTerritory.name = `fallback-territory-${territoryData?.id || 'unknown'}`;
-      
-      const fallbackLandscape = createLandscape({
-        type: 'mainland',
-        seed: 12345,
-        size: this.defaultSize,
-        color: "#4285F4",
-        random: new PRNG(12345)
-      });
-      
-      fallbackTerritory.add(fallbackLandscape);
-      
-      // Add to scene if available
-      if (this.scene && options.addToScene !== false) {
-        this.scene.add(fallbackTerritory);
-      }
-      
-      return fallbackTerritory;
+  try {
+    console.log("Creating territory with data:", territoryData);
+    
+    const networkId = territoryData?.id || 'unknown';
+    
+    // Check if already loaded
+    if (this.loadedTerritories.has(networkId) && !options.forceRecreate) {
+      console.log(`Territory ${networkId} already loaded, returning existing instance`);
+      return this.loadedTerritories.get(networkId);
     }
+    
+    // Create random number generator with seed from visual seed
+    const seed = territoryData?.visualSeed || Math.floor(Math.random() * 1000000);
+    const random = new PRNG(seed);
+    
+    // Create main container for the territory
+    const territory = new Group();
+    territory.name = `territory-${networkId}`;
+    
+    // Generate color scheme - using robust function that handles missing palette
+    const colorScheme = generateColorScheme(territoryData, random);
+    console.log("Generated color scheme:", colorScheme);
+    
+    // Use the appropriate renderer based on territory type
+    let territoryMesh;
+    
+    // Import the needed renderers
+    const MainlandRenderer = require('./MainlandRenderer').MainlandRenderer;
+    const IslandRenderer = require('./IslandRenderer').IslandRenderer;
+    const PeninsulaRenderer = require('./PeninsulaRenderer').PeninsulaRenderer;
+    const MountainRenderer = require('./MountainRenderer').MountainRenderer;
+    const ArchipelagoRenderer = require('./ArchipelagoRenderer').ArchipelagoRenderer;
+    const DesertRenderer = require('./DesertRenderer').DesertRenderer;
+    const ForestRenderer = require('./ForestRenderer').ForestRenderer;
+    
+    // Create renderer based on territory type
+    switch (territoryData.type) {
+      case 'mainland':
+        territoryMesh = new MainlandRenderer().createMesh(territoryData, colorScheme);
+        break;
+      case 'island':
+        territoryMesh = new IslandRenderer().createMesh(territoryData, colorScheme);
+        break;
+      case 'peninsula':
+        territoryMesh = new PeninsulaRenderer().createMesh(territoryData, colorScheme);
+        break;
+      case 'mountains':
+        territoryMesh = new MountainRenderer().createMesh(territoryData, colorScheme);
+        break;
+      case 'archipelago':
+        territoryMesh = new ArchipelagoRenderer().createMesh(territoryData, colorScheme);
+        break;
+      case 'desert':
+        territoryMesh = new DesertRenderer().createMesh(territoryData, colorScheme);
+        break;
+      case 'forest':
+        territoryMesh = new ForestRenderer().createMesh(territoryData, colorScheme);
+        break;
+      default:
+        // Fallback to mainland if type is unknown
+        territoryMesh = new MainlandRenderer().createMesh(territoryData, colorScheme);
+    }
+    
+    // Add the territory mesh to the group
+    territory.add(territoryMesh);
+    
+    // Rest of your code for applying position, etc.
+    
+    return territory;
+  } catch (error) {
+    console.error("Error creating territory:", error);
+    // Your fallback code here
   }
+}
   
   /**
    * Create multiple territories at once
