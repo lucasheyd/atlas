@@ -1,5 +1,6 @@
 // app/api/agent-proxy/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { getAgent } from '../../pages/api/agent';
 
 export async function POST(request: NextRequest) {
   try {

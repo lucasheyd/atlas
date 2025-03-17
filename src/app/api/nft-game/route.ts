@@ -278,15 +278,15 @@ export async function GET(req: Request) {
       <div class="modal-body">
         <p id="win-stats">Time: 0s | Moves: 0</p>
         <p style="margin-top: 1rem;">
-          Visite <a href="https://fractal-swarm.xyz/game" target="_blank">fractal-swarm.xyz/game</a> para salvar seu progresso e acessar todos os níveis!
+          Visit <a href="https://fractal-swarm.xyz/game" target="_blank">fractal-swarm.xyz/game</a> to save your progress!
         </p>
       </div>
       <div class="modal-buttons">
         <button id="next-level-btn" class="btn" style="padding: 0.5rem 1rem; display: ${parseInt(level) < 3 ? 'block' : 'none'}">
-          Próximo Nível
+          Next Level
         </button>
         <button id="replay-btn" class="btn" style="padding: 0.5rem 1rem;">
-          Jogar Novamente
+          Play Again
         </button>
       </div>
     </div>
