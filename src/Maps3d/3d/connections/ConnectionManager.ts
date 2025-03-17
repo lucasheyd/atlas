@@ -1,4 +1,4 @@
-// src/Maps3d/3d/connections/ConnectionManager.ts
+// src/Maps3d/3d/connections/ConnectionManager.ts - Animation Fix
 import * as THREE from 'three';
 import { NetworkConnection } from '../../types/Network';
 import { PathMarker } from './PathMarker';
@@ -14,40 +14,44 @@ export class ConnectionManager {
   }
   
   /**
-   * Cria conexões entre territórios
+   * Creates connections between territories
    */
   public createConnections(
     connections: NetworkConnection[],
     territories: Map<string, THREE.Object3D>
   ): void {
-    // Limpar conexões existentes
+    console.log(`Creating ${connections.length} connections between territories`);
+    
+    // Clear existing connections
     this.connections.forEach(conn => this.scene.remove(conn));
     this.connections = [];
     this.pathMarkers = [];
     
-    // Criar novas conexões
+    // Create new connections
     connections.forEach(connection => {
       const sourceObj = territories.get(connection.source);
       const targetObj = territories.get(connection.target);
       
       if (sourceObj && targetObj) {
+        console.log(`Creating connection from ${connection.source} to ${connection.target}`);
+        
         const sourcePosition = new THREE.Vector3();
         sourceObj.getWorldPosition(sourcePosition);
         
         const targetPosition = new THREE.Vector3();
         targetObj.getWorldPosition(targetPosition);
         
-        // Elevar ligeiramente para ficar acima do nível do oceano
+        // Slightly elevate connections to be above ocean level
         sourcePosition.y += 0.5;
         targetPosition.y += 0.5;
         
-        // Criar caminho entre os pontos
+        // Create path between points
         const pathRenderer = new PathRenderer();
         
-        // Cor padrão para conexão
+        // Default color for connection
         const pathColor = connection.color ? 
-          new THREE.Color(connection.color) : 
-          new THREE.Color(0xb98b56);
+          new THREE.Color(connection.color).getHex() : 
+          0xb98b56;
         
         const path = pathRenderer.createPath(
           sourcePosition, 
@@ -58,26 +62,38 @@ export class ConnectionManager {
         this.scene.add(path);
         this.connections.push(path);
         
-        // Adicionar marcadores animados (3 por caminho)
+        // Add animated markers (3 per path with slightly different speeds)
         for (let i = 0; i < 3; i++) {
           const marker = new PathMarker(
             sourcePosition,
             targetPosition,
             pathColor,
-            0.003 + (i * 0.001) // Velocidades ligeiramente diferentes
+            0.003 + (i * 0.001) // Slightly different speeds
           );
           
           this.scene.add(marker.mesh);
           this.pathMarkers.push(marker);
         }
+      } else {
+        console.warn(`Could not create connection: missing territory ${!sourceObj ? connection.source : connection.target}`);
       }
     });
+    
+    console.log(`Created ${this.connections.length} connections with ${this.pathMarkers.length} markers`);
   }
   
   /**
-   * Atualiza as animações dos marcadores de caminho
+   * Updates the animations of path markers
    */
   public updateAnimations(): void {
-    this.pathMarkers.forEach(marker => marker.update());
+    if (this.pathMarkers.length === 0) {
+      return; // No markers to update
+    }
+    
+    try {
+      this.pathMarkers.forEach(marker => marker.update());
+    } catch (error) {
+      console.error("Error updating connection animations:", error);
+    }
   }
 }

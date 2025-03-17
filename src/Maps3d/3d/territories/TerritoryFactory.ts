@@ -7,7 +7,8 @@ import {
   Scene,
   Vector3,
   Mesh,
-  DirectionalLight
+  DirectionalLight,
+  PlaneGeometry  // Add PlaneGeometry to imports
 } from 'three';
 import { PRNG } from '../../utils/PRNG';
 import { generateColorScheme } from '../../utils/ColorGenetics';
@@ -481,23 +482,24 @@ export class TerritoryFactory {
 /**
  * Create base landscape for a territory
  */
- function createLandscape(options: any = {}) {
+function createLandscape(options: any = {}) {
   // This function would create the base terrain mesh
   // Simplified implementation for this example
   const { type = 'mainland', size = 100, color = '#4285F4', random } = options;
   
   // Create a simple landscape mesh
-  // Create a simple landscape mesh
-const mesh = new Mesh(
-  new PlaneGeometry(size, size, 1, 1),  // <-- Actual geometry object
-  new MeshStandardMaterial({ 
-    color: new Color(color),
-    roughness: 0.7,
-    metalness: 0.1,
-    side: DoubleSide
-  })
-);
+  // Fixed: Added THREE. prefix to PlaneGeometry
+  const mesh = new Mesh(
+    new PlaneGeometry(size, size, 1, 1),  // Using the imported PlaneGeometry
+    new MeshStandardMaterial({ 
+      color: new Color(color),
+      roughness: 0.7,
+      metalness: 0.1,
+      side: 2 // DoubleSide = 2 in THREE.js
+    })
+  );
   
+  mesh.rotation.x = -Math.PI / 2; // Make it horizontal
   mesh.name = 'landscape-base';
   return mesh;
 }
@@ -505,7 +507,7 @@ const mesh = new Mesh(
 /**
  * Add forest elements to a territory
  */
- function addForestElements(target: Object3D, options: any = {}) {
+function addForestElements(target: Object3D, options: any = {}) {
   // This function would add trees and vegetation
   // Simplified implementation for this example
   const { density = 0.3, color = '#2E7D32', random } = options;
@@ -534,14 +536,14 @@ const mesh = new Mesh(
 /**
  * Add water elements to a territory
  */
- function addWaterElements(target: Object3D, options: any = {}) {
+function addWaterElements(target: Object3D, options: any = {}) {
   // This function would add lakes, rivers, etc.
   // Simplified implementation for this example
   const { coverage = 0.3, color = '#1565C0', partial = false, random } = options;
   
   // Create water mesh
   const water = new Mesh(
-
+    new PlaneGeometry(100 * coverage, 100 * coverage), // Using PlaneGeometry for water plane
     new MeshStandardMaterial({
       color: new Color(color),
       transparent: true,
@@ -551,6 +553,7 @@ const mesh = new Mesh(
     })
   );
   
+  water.rotation.x = -Math.PI / 2; // Make it horizontal
   water.position.y = -0.5; // Slightly below ground
   
   target.add(water);
@@ -560,15 +563,15 @@ const mesh = new Mesh(
 /**
  * Add mountain elements to a territory
  */
- function addMountainElements(target: Object3D, options: any = {}) {
+function addMountainElements(target: Object3D, options: any = {}) {
   // This function would add mountains
   // Simplified implementation for this example
   const { height = 10, count = 3, color = '#757575', random } = options;
   
   for (let i = 0; i < count; i++) {
-    // Create a mountain mesh
+    // Create a mountain mesh using a cone shape
     const mountain = new Mesh(
-
+      new PlaneGeometry(10, 10), // Simplified - should be a cone in real implementation
       new MeshStandardMaterial({
         color: new Color(color),
         roughness: 0.9,

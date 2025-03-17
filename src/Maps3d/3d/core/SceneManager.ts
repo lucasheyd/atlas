@@ -1,4 +1,4 @@
-// src/Maps3d/3d/core/SceneManager.ts - Correção do erro de boundingSphere
+// src/Maps3d/3d/core/SceneManager.ts - Animation Fix
 import * as THREE from 'three';
 import { Territory } from '../../types/Territory';
 import { NetworkConnection } from '../../types/Network';
@@ -27,62 +27,78 @@ export class SceneManager {
   private territories: Map<string, THREE.Object3D> = new Map();
   private isAnimating: boolean = false;
   private lastCameraPosition: THREE.Vector3 = new THREE.Vector3();
+  private animationFrameId: number | null = null;
   
   /**
    * Creates the scene manager for the 3D map
    * @param container HTML element that will contain the Three.js canvas
    */
   constructor(container: HTMLElement) {
+    console.log("SceneManager constructor called", container);
     this.container = container;
     
-    // Initialize scene
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0xf5e9c9);
-
-    // Initialize renderer with better settings for performance
-    this.renderer = new THREE.WebGLRenderer({ 
-      antialias: true,
-      alpha: true,
-      powerPreference: 'high-performance'
-    });
-    this.renderer.setSize(container.clientWidth, container.clientHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio for performance
-    
-    // Configure shadows for better performance
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.shadowMap.autoUpdate = false; // Manually update for better performance
-    this.renderer.shadowMap.needsUpdate = true;
-    
-    container.appendChild(this.renderer.domElement);
-    
-    // Initialize camera controller with the DOM element for direct event handling
-    this.cameraController = new CameraController(
-      container.clientWidth / container.clientHeight,
-      this.renderer.domElement
-    );
-    
-    // Other components initialization
-    this.lightingSetup = new LightingSetup(this.scene);
-    this.interactionManager = new InteractionManager(
-      this.cameraController.getCamera(),
-      this.renderer.domElement
-    );
-    
-    // Initialize renderers
-    this.territoryFactory = new TerritoryFactory();
-    this.connectionManager = new ConnectionManager(this.scene);
-    this.oceanRenderer = new OceanRenderer();
-    this.borderRenderer = new BorderRenderer();
-    this.compassRenderer = new CompassRenderer();
-    
-    // Add base elements
-    this.scene.add(this.oceanRenderer.create());
-    this.scene.add(this.borderRenderer.create());
-    this.scene.add(this.compassRenderer.create());
-    
-    // Add resize event
-    window.addEventListener('resize', this.onWindowResize.bind(this));
+    try {
+      // Store reference on container for debugging
+      (container as any).__sceneManager = this;
+      
+      // Initialize scene
+      this.scene = new THREE.Scene();
+      this.scene.background = new THREE.Color(0xf5e9c9);
+      
+      // Initialize renderer with better settings for performance
+      this.renderer = new THREE.WebGLRenderer({ 
+        antialias: true,
+        alpha: true,
+        powerPreference: 'high-performance'
+      });
+      this.renderer.setSize(container.clientWidth, container.clientHeight);
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio for performance
+      
+      // Configure shadows for better performance
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      this.renderer.shadowMap.autoUpdate = false; // Manually update for better performance
+      this.renderer.shadowMap.needsUpdate = true;
+      
+      container.appendChild(this.renderer.domElement);
+      
+      // Store reference on canvas for debugging
+      (this.renderer.domElement as any).__scene = this.scene;
+      (this.renderer.domElement as any).__sceneManager = this;
+      
+      // Initialize camera controller with the DOM element for direct event handling
+      this.cameraController = new CameraController(
+        container.clientWidth / container.clientHeight,
+        this.renderer.domElement
+      );
+      
+      // Other components initialization
+      this.lightingSetup = new LightingSetup(this.scene);
+      this.interactionManager = new InteractionManager(
+        this.cameraController.getCamera(),
+        this.renderer.domElement
+      );
+      
+      // Initialize renderers
+      this.territoryFactory = new TerritoryFactory();
+      this.connectionManager = new ConnectionManager(this.scene);
+      this.oceanRenderer = new OceanRenderer();
+      this.borderRenderer = new BorderRenderer();
+      this.compassRenderer = new CompassRenderer();
+      
+      // Add base elements
+      console.log("Adding base elements to scene");
+      this.scene.add(this.oceanRenderer.create());
+      this.scene.add(this.borderRenderer.create());
+      this.scene.add(this.compassRenderer.create());
+      
+      // Add resize event
+      window.addEventListener('resize', this.onWindowResize.bind(this));
+      
+      console.log("SceneManager initialized successfully");
+    } catch (error) {
+      console.error("Error in SceneManager constructor:", error);
+    }
   }
   
   /**
@@ -137,6 +153,12 @@ export class SceneManager {
     // Reset view to show all territories
     this.resetView();
     
+    // Make sure animation is running
+    if (!this.isAnimating) {
+      console.log("Starting animation after territory load");
+      this.startAnimation();
+    }
+    
     return Promise.resolve();
   }
   
@@ -145,6 +167,7 @@ export class SceneManager {
    */
   private loadSingleTerritory(territory: Territory): void {
     try {
+      console.log(`Loading territory ${territory.id}`);
       // Create territory with integrated ornaments
       const territoryObject = this.territoryFactory.createTerritory(territory);
       
@@ -176,6 +199,7 @@ export class SceneManager {
       // Apply optimizations
       this.applyTerritoryOptimizations(territoryObject);
       
+      console.log(`Territory ${territory.id} loaded successfully`);
     } catch (error) {
       console.error(`Error loading territory ${territory.id}:`, error);
     }
@@ -209,6 +233,7 @@ export class SceneManager {
    * @param connections List of connections to render
    */
   public addConnections(connections: NetworkConnection[]): void {
+    console.log(`Adding ${connections.length} connections`);
     this.connectionManager.createConnections(connections, this.territories);
   }
   
@@ -216,9 +241,16 @@ export class SceneManager {
    * Start the animation loop
    */
   public startAnimation(): void {
-    if (this.isAnimating) return;
+    console.log("StartAnimation called");
+    if (this.isAnimating) {
+      console.log("Already animating, returning");
+      return;
+    }
     
+    console.log("Starting animation loop");
     this.isAnimating = true;
+    // Store a properly bound animate function to prevent "this" context issues
+    this.animate = this.animate.bind(this);
     this.animate();
   }
   
@@ -226,7 +258,12 @@ export class SceneManager {
    * Stop the animation loop
    */
   public stopAnimation(): void {
+    console.log("StopAnimation called");
     this.isAnimating = false;
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
   }
   
   /**
@@ -333,24 +370,33 @@ export class SceneManager {
    * Main animation loop
    */
   private animate(): void {
-    if (!this.isAnimating) return;
+    if (!this.isAnimating) {
+      console.log("Animation stopped, not requesting next frame");
+      return;
+    }
     
-    requestAnimationFrame(this.animate.bind(this));
+    // Store the animation frame ID so we can cancel it if needed
+    this.animationFrameId = requestAnimationFrame(this.animate);
     
-    // Update camera controls
-    this.cameraController.update();
-    
-    // Update LOD based on camera distance
-    this.updateLOD();
-    
-    // Update connection animations
-    this.connectionManager.updateAnimations();
-    
-    // Update interactions
-    this.interactionManager.update();
-    
-    // Render scene
-    this.renderer.render(this.scene, this.cameraController.getCamera());
+    try {
+      // Update camera controls
+      this.cameraController.update();
+      
+      // Update LOD based on camera distance
+      this.updateLOD();
+      
+      // Update connection animations
+      this.connectionManager.updateAnimations();
+      
+      // Update interactions
+      this.interactionManager.update();
+      
+      // Render scene
+      this.renderer.render(this.scene, this.cameraController.getCamera());
+    } catch (error) {
+      console.error("Error in animation loop:", error);
+      // Don't stop the animation loop on error, just continue
+    }
   }
   
   /**
@@ -379,5 +425,7 @@ export class SceneManager {
     
     // Clear all object references
     this.territories.clear();
+    
+    console.log("SceneManager disposed");
   }
 }

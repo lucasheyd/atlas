@@ -1,4 +1,4 @@
-// src/Maps3d/3d/connections/PathMarker.ts
+// src/Maps3d/3d/connections/PathMarker.ts - Animation Fix
 import * as THREE from 'three';
 
 export class PathMarker {
@@ -8,71 +8,92 @@ export class PathMarker {
   private speed: number;
   
   /**
-   * Cria um marcador animado que se move ao longo de um caminho
+   * Creates an animated marker that moves along a path
+   * @param startPoint Start point of the path
+   * @param endPoint End point of the path
+   * @param color Color of the marker
+   * @param speed Movement speed (0-1, where 1 is a complete lap per frame)
    */
   constructor(
     startPoint: THREE.Vector3,
     endPoint: THREE.Vector3,
-    color: THREE.Color = new THREE.Color(0xb98b56),
+    color: number = 0xb98b56,
     speed: number = 0.003
   ) {
-    // Criar ponto médio para a curva
-    const midPoint = new THREE.Vector3().addVectors(
-      startPoint, 
-      endPoint
-    ).multiplyScalar(0.5);
-    
-    // Elevar o ponto médio para criar uma curva
-    midPoint.y += 1.5;
-    
-    // Criar curva para movimento
-    this.curve = new THREE.QuadraticBezierCurve3(
-      startPoint,
-      midPoint,
-      endPoint
-    );
-    
-    // Posição inicial aleatória na curva
-    this.t = Math.random();
-    
-    // Velocidade de movimento
-    this.speed = speed;
-    
-    // Criar mesh do marcador
-    const geometry = new THREE.SphereGeometry(0.2, 8, 8);
-    const material = new THREE.MeshBasicMaterial({
-      color: color,
-      transparent: true,
-      opacity: 0.8
-    });
-    
-    this.mesh = new THREE.Mesh(geometry, material);
-    
-    // Posicionar inicialmente
-    this.updatePosition();
+    try {
+      // Create mid point for the curve
+      const midPoint = new THREE.Vector3().addVectors(
+        startPoint, 
+        endPoint
+      ).multiplyScalar(0.5);
+      
+      // Elevate the mid point to create a curve
+      midPoint.y += 1.5;
+      
+      // Create curve for movement
+      this.curve = new THREE.QuadraticBezierCurve3(
+        startPoint,
+        midPoint,
+        endPoint
+      );
+      
+      // Random initial position on the curve
+      this.t = Math.random();
+      
+      // Movement speed
+      this.speed = speed;
+      
+      // Create marker mesh
+      const geometry = new THREE.SphereGeometry(0.2, 8, 8);
+      const material = new THREE.MeshBasicMaterial({
+        color: color,
+        transparent: true,
+        opacity: 0.8
+      });
+      
+      this.mesh = new THREE.Mesh(geometry, material);
+      
+      // Position initially
+      this.updatePosition();
+    } catch (error) {
+      console.error("Error creating path marker:", error);
+      // Create a placeholder mesh if something went wrong
+      const geometry = new THREE.SphereGeometry(0.1, 4, 4);
+      const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      this.mesh = new THREE.Mesh(geometry, material);
+      this.mesh.visible = false; // Hide the error marker
+    }
   }
   
   /**
-   * Atualiza a posição do marcador ao longo da curva
+   * Updates the position of the marker along the curve
    */
   private updatePosition(): void {
-    const position = this.curve.getPointAt(this.t);
-    this.mesh.position.copy(position);
+    try {
+      const position = this.curve.getPointAt(this.t);
+      this.mesh.position.copy(position);
+    } catch (error) {
+      console.error("Error updating marker position:", error);
+    }
   }
   
   /**
-   * Atualiza o marcador (movimento)
+   * Updates the marker (movement)
    */
   public update(): void {
-    // Avançar posição
-    this.t += this.speed;
-    
-    // Loop ao chegar ao final
-    if (this.t > 1) {
-      this.t = 0;
+    try {
+      // Advance position
+      this.t += this.speed;
+      
+      // Loop at the end
+      if (this.t > 1) {
+        this.t = 0;
+      }
+      
+      // Update position
+      this.updatePosition();
+    } catch (error) {
+      console.error("Error updating marker:", error);
     }
-    
-    // Atualizar posição
-    this.updatePosition();
   }
 }
