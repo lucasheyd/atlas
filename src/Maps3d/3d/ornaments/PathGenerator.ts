@@ -1,6 +1,7 @@
-// src/Maps3d/3d/ornaments/PathGenerator.ts
+// src/Maps3d/3d/ornaments/PathGenerator.ts (Correção para rotação)
 import * as THREE from 'three';
 import { ColorScheme } from '../../utils/ColorGenetics';
+import { RandomGenerator } from '../../utils/RandomGenerator';
 
 export class PathGenerator {
   /**
@@ -19,70 +20,85 @@ export class PathGenerator {
     const length = direction.length();
     direction.normalize();
     
-    // Calcular rotação
-    const quaternion = new THREE.Quaternion();
-    quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
+    // CORREÇÃO CRÍTICA: Use o plano xz em vez de xy para o caminho
+    // Isso garante que o caminho esteja no "chão" e não na vertical
     
     // Criar geometria do caminho
     const pathGeometry = new THREE.PlaneGeometry(width, length);
     const pathMaterial = new THREE.MeshPhongMaterial({
       color: new THREE.Color(colors.secondary),
       specular: new THREE.Color(colors.specular),
-      shininess: 10
+      shininess: 10,
+      side: THREE.DoubleSide // Garantir que o caminho seja visível de ambos os lados
     });
     
     const path = new THREE.Mesh(pathGeometry, pathMaterial);
-    path.quaternion.copy(quaternion);
     
-    // Posicionar o caminho
-    path.position.copy(startPoint).add(direction.multiplyScalar(length / 2));
-    path.rotation.x = -Math.PI / 2; // Rotacionar para ficar horizontal
+    // Rotação específica para garantir que o caminho fique no plano horizontal (chão)
+    path.rotation.x = -Math.PI / 2;
+    
+    // Ajustar a orientação para apontar na direção correta
+    const angle = Math.atan2(direction.z, direction.x);
+    path.rotation.z = -angle - Math.PI / 2;
+    
+    // Posicionar o caminho no meio entre os pontos
+    path.position.set(
+      (startPoint.x + endPoint.x) / 2,
+      Math.min(startPoint.y, endPoint.y) + 0.02, // Ligeiramente acima do chão
+      (startPoint.z + endPoint.z) / 2
+    );
     
     path.receiveShadow = true;
     
     pathGroup.add(path);
     
     // Adicionar bordas ao caminho
-    const edgeGeometry = new THREE.BoxGeometry(width * 1.1, length * 0.02, width * 0.1);
-    const edgeMaterial = new THREE.MeshPhongMaterial({
+    this.addPathBorders(pathGroup, startPoint, endPoint, width, length, colors);
+    
+    return pathGroup;
+  }
+  
+  /**
+   * Adiciona bordas ao caminho
+   */
+  private addPathBorders(
+    pathGroup: THREE.Group,
+    startPoint: THREE.Vector3,
+    endPoint: THREE.Vector3,
+    width: number,
+    length: number,
+    colors: ColorScheme
+  ): void {
+    // Simplificando as bordas para garantir que apareçam corretamente
+    const borderHeight = 0.03;
+    const borderWidth = 0.05;
+    
+    const direction = new THREE.Vector3().subVectors(endPoint, startPoint).normalize();
+    const angle = Math.atan2(direction.z, direction.x);
+    
+    // Criar uma borda simplificada que seja apenas uma elevação no caminho
+    const borderGeometry = new THREE.BoxGeometry(width + 0.1, borderHeight, length);
+    const borderMaterial = new THREE.MeshPhongMaterial({
       color: new THREE.Color(colors.primary),
       specular: new THREE.Color(colors.specular),
       shininess: 20
     });
     
-    // Borda superior
-    const topEdge = new THREE.Mesh(edgeGeometry, edgeMaterial);
-    topEdge.position.copy(startPoint).add(direction.multiplyScalar(length / 2));
-    topEdge.position.y += 0.01;
-    topEdge.quaternion.copy(quaternion);
-    topEdge.rotation.x = -Math.PI / 2;
+    const border = new THREE.Mesh(borderGeometry, borderMaterial);
     
-    // Bordas laterais
-    const sideEdgeGeometry = new THREE.BoxGeometry(width * 0.05, length, width * 0.05);
-    
-    const leftEdge = new THREE.Mesh(sideEdgeGeometry, edgeMaterial);
-    leftEdge.position.copy(startPoint).add(direction.multiplyScalar(length / 2));
-    leftEdge.position.set(
-      leftEdge.position.x - width / 2,
-      leftEdge.position.y + 0.025,
-      leftEdge.position.z
+    // Posicionar no centro do caminho, ligeiramente abaixo para aparecer como uma elevação
+    border.position.set(
+      (startPoint.x + endPoint.x) / 2,
+      Math.min(startPoint.y, endPoint.y), // No nível do chão
+      (startPoint.z + endPoint.z) / 2
     );
-    leftEdge.quaternion.copy(quaternion);
     
-    const rightEdge = new THREE.Mesh(sideEdgeGeometry, edgeMaterial);
-    rightEdge.position.copy(startPoint).add(direction.multiplyScalar(length / 2));
-    rightEdge.position.set(
-      rightEdge.position.x + width / 2,
-      rightEdge.position.y + 0.025,
-      rightEdge.position.z
-    );
-    rightEdge.quaternion.copy(quaternion);
+    // Rotacionar para alinhar com o caminho
+    border.rotation.y = angle;
     
-    pathGroup.add(topEdge);
-    pathGroup.add(leftEdge);
-    pathGroup.add(rightEdge);
+    border.receiveShadow = true;
     
-    return pathGroup;
+    pathGroup.add(border);
   }
   
   /**
@@ -101,106 +117,65 @@ export class PathGenerator {
     const length = direction.length();
     direction.normalize();
     
-    // Calcular rotação
-    const quaternion = new THREE.Quaternion();
-    quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
+    // Calcular ângulo para rotação
+    const angle = Math.atan2(direction.z, direction.x);
     
-    // Criar geometria da ponte
-    const bridgeGeometry = new THREE.BoxGeometry(width, 0.1, length);
-    const bridgeMaterial = new THREE.MeshPhongMaterial({
-      color: 0x8B4513, // Marrom (madeira)
+    // Versão simplificada da ponte para garantir que seja renderizada corretamente
+    // Tabuleiro da ponte
+    const deckGeometry = new THREE.BoxGeometry(length, 0.1, width);
+    const deckMaterial = new THREE.MeshPhongMaterial({
+      color: 0x8B4513, // Marrom madeira escura
       specular: 0x333333,
       shininess: 20
     });
     
-    const bridge = new THREE.Mesh(bridgeGeometry, bridgeMaterial);
-    bridge.position.copy(startPoint).add(direction.multiplyScalar(length / 2));
-    bridge.position.y += 0.05;
-    bridge.quaternion.copy(quaternion);
+    const deck = new THREE.Mesh(deckGeometry, deckMaterial);
     
-    bridge.castShadow = true;
-    bridge.receiveShadow = true;
-    
-    bridgeGroup.add(bridge);
-    
-    // Adicionar corrimãos
-    const railingGeometry = new THREE.BoxGeometry(width, 0.2, 0.1);
-    const railingMaterial = new THREE.MeshPhongMaterial({
-      color: 0x8B4513,
-      specular: 0x333333,
-      shininess: 20
-    });
-    
-    // Corrimão frontal
-    const frontRailing = new THREE.Mesh(railingGeometry, railingMaterial);
-    frontRailing.position.copy(startPoint).add(direction.multiplyScalar(0));
-    frontRailing.position.y += 0.2;
-    frontRailing.quaternion.copy(quaternion);
-    
-    // Corrimão traseiro
-    const backRailing = new THREE.Mesh(railingGeometry, railingMaterial);
-    backRailing.position.copy(startPoint).add(direction.multiplyScalar(length));
-    backRailing.position.y += 0.2;
-    backRailing.quaternion.copy(quaternion);
-    
-    // Corrimãos laterais
-    const sideRailingGeometry = new THREE.BoxGeometry(0.1, 0.2, length);
-    
-    const leftRailing = new THREE.Mesh(sideRailingGeometry, railingMaterial);
-    leftRailing.position.copy(startPoint).add(direction.multiplyScalar(length / 2));
-    leftRailing.position.set(
-      leftRailing.position.x - width / 2,
-      leftRailing.position.y + 0.2,
-      leftRailing.position.z
+    // Posicionar corretamente
+    deck.position.set(
+      (startPoint.x + endPoint.x) / 2,
+      Math.max(startPoint.y, endPoint.y) + 0.05, // Ligeiramente acima
+      (startPoint.z + endPoint.z) / 2
     );
-    leftRailing.quaternion.copy(quaternion);
     
-    const rightRailing = new THREE.Mesh(sideRailingGeometry, railingMaterial);
-    rightRailing.position.copy(startPoint).add(direction.multiplyScalar(length / 2));
-    rightRailing.position.set(
-      rightRailing.position.x + width / 2,
-      rightRailing.position.y + 0.2,
-      rightRailing.position.z
-    );
-    rightRailing.quaternion.copy(quaternion);
+    // Rotacionar para alinhar com a direção
+    deck.rotation.y = angle;
     
-    bridgeGroup.add(frontRailing);
-    bridgeGroup.add(backRailing);
-    bridgeGroup.add(leftRailing);
-    bridgeGroup.add(rightRailing);
+    deck.castShadow = true;
+    deck.receiveShadow = true;
     
-    // Adicionar pilares
-    const pillarGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.5, 8);
-    const pillarMaterial = new THREE.MeshPhongMaterial({
-      color: 0x8B4513,
-      specular: 0x333333,
-      shininess: 20
+    bridgeGroup.add(deck);
+    
+    // Adicionar corrimões simplificados
+    const railHeight = 0.3;
+    const railGeometry = new THREE.BoxGeometry(length, railHeight, 0.05);
+    const railMaterial = new THREE.MeshPhongMaterial({
+      color: 0x6e4a31, // Marrom escuro
+      shininess: 10
     });
     
-    const pillarCount = Math.floor(length / (width * 0.8)) + 1;
-    for (let i = 0; i < pillarCount; i++) {
-      const t = i / (pillarCount - 1);
-      const position = new THREE.Vector3().lerpVectors(startPoint, endPoint, t);
-      
-      const leftPillar = new THREE.Mesh(pillarGeometry, pillarMaterial);
-      leftPillar.position.copy(position);
-      leftPillar.position.set(
-        leftPillar.position.x - width / 2.2,
-        leftPillar.position.y - 0.2,
-        leftPillar.position.z
-      );
-      
-      const rightPillar = new THREE.Mesh(pillarGeometry, pillarMaterial);
-      rightPillar.position.copy(position);
-      rightPillar.position.set(
-        rightPillar.position.x + width / 2.2,
-        rightPillar.position.y - 0.2,
-        rightPillar.position.z
-      );
-      
-      bridgeGroup.add(leftPillar);
-      bridgeGroup.add(rightPillar);
-    }
+    // Corrimão esquerdo
+    const leftRail = new THREE.Mesh(railGeometry, railMaterial);
+    leftRail.position.set(
+      (startPoint.x + endPoint.x) / 2,
+      Math.max(startPoint.y, endPoint.y) + 0.05 + railHeight/2,
+      (startPoint.z + endPoint.z) / 2 + (width/2) - 0.05
+    );
+    leftRail.rotation.y = angle;
+    leftRail.castShadow = true;
+    
+    // Corrimão direito
+    const rightRail = new THREE.Mesh(railGeometry, railMaterial);
+    rightRail.position.set(
+      (startPoint.x + endPoint.x) / 2,
+      Math.max(startPoint.y, endPoint.y) + 0.05 + railHeight/2,
+      (startPoint.z + endPoint.z) / 2 - (width/2) + 0.05
+    );
+    rightRail.rotation.y = angle;
+    rightRail.castShadow = true;
+    
+    bridgeGroup.add(leftRail);
+    bridgeGroup.add(rightRail);
     
     return bridgeGroup;
   }

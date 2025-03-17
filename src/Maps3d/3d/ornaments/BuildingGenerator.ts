@@ -30,7 +30,7 @@ export class BuildingGenerator {
     });
     
     const base = new THREE.Mesh(baseGeometry, baseMaterial);
-    base.position.y = height / 2;
+    base.position.y = height / 2; // Centralizar verticalmente
     base.castShadow = true;
     base.receiveShadow = true;
     
@@ -38,464 +38,432 @@ export class BuildingGenerator {
     
     // Para níveis mais altos, adicionar elementos decorativos
     if (level >= 2) {
-      // Telhado
-      const roofHeight = 0.3;
-      const roofGeometry = new THREE.ConeGeometry(width * 0.8, roofHeight, 4);
-      const roofMaterial = new THREE.MeshPhongMaterial({
-        color: new THREE.Color(colors.accent),
-        shininess: 20
-      });
-      
-      const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-      roof.position.y = height + (roofHeight / 2);
-      roof.castShadow = true;
-      
-      buildingGroup.add(roof);
+      // Telhado - corrigido para evitar distorções
+      this.addRoof(buildingGroup, width, height, level, colors);
     }
     
     // Para níveis ainda mais altos, adicionar detalhes
     if (level >= 3) {
       // Janelas
-      const windowSize = 0.15;
-      const windowGeometry = new THREE.PlaneGeometry(windowSize, windowSize);
-      const windowMaterial = new THREE.MeshPhongMaterial({
-        color: 0xffffaa, // Amarelo claro para janelas iluminadas
-        emissive: 0x555533,
-        specular: 0xffffff,
-        shininess: 100
+      this.addWindows(buildingGroup, width, height, level);
+    }
+    
+    // Adicionar escadas ou entrada
+    if (level >= 2) {
+      // Escadas ou plataforma na frente do edifício
+      const stairsWidth = width * 0.6;
+      const stairsDepth = width * 0.3;
+      const stairsHeight = 0.05;
+      
+      const stairsGeometry = new THREE.BoxGeometry(stairsWidth, stairsHeight, stairsDepth);
+      const stairsMaterial = new THREE.MeshPhongMaterial({
+        color: new THREE.Color(colors.primary),
+        shininess: 20
       });
       
-      // Adicionar várias janelas nas laterais
-      for (let i = 0; i < level; i++) {
-        const y = 0.3 + i * 0.4;
-        
-        // Janela frontal
-        const frontWindow = new THREE.Mesh(windowGeometry, windowMaterial);
-        frontWindow.position.set(0, y, width / 2 + 0.01);
-        frontWindow.rotateY(Math.PI);
-        
-        // Janela traseira
-        const backWindow = new THREE.Mesh(windowGeometry, windowMaterial);
-        backWindow.position.set(0, y, -width / 2 - 0.01);
-        
-        // Janelas laterais
-        const leftWindow = new THREE.Mesh(windowGeometry, windowMaterial);
-        leftWindow.position.set(-width / 2 - 0.01, y, 0);
-        leftWindow.rotateY(-Math.PI / 2);
-        
-        const rightWindow = new THREE.Mesh(windowGeometry, windowMaterial);
-        rightWindow.position.set(width / 2 + 0.01, y, 0);
-        rightWindow.rotateY(Math.PI / 2);
-        
-        buildingGroup.add(frontWindow);
-        buildingGroup.add(backWindow);
-        buildingGroup.add(leftWindow);
-        buildingGroup.add(rightWindow);
-      }
+      const stairs = new THREE.Mesh(stairsGeometry, stairsMaterial);
+      stairs.position.set(0, stairsHeight / 2, width / 2 + stairsDepth / 2);
+      stairs.receiveShadow = true;
+      
+      buildingGroup.add(stairs);
     }
     
     // Características adicionais para níveis de fusão altos
     if (fusionLevel >= 3 && level >= 4) {
       // Torre
-      const towerWidth = width * 0.4;
-      const towerHeight = height * 0.6;
+      this.addTower(buildingGroup, width, height, level, colors, fusionLevel);
       
-      const towerGeometry = new THREE.CylinderGeometry(
-        towerWidth / 2,
-        towerWidth / 2,
-        towerHeight,
-        8
-      );
-      
-      const towerMaterial = new THREE.MeshPhongMaterial({
-        color: buildingColor,
-        specular: new THREE.Color(colors.specular),
-        shininess: 30
-      });
-      
-      const tower = new THREE.Mesh(towerGeometry, towerMaterial);
-      tower.position.set(width / 2, height + (towerHeight / 2), width / 2);
-      tower.castShadow = true;
-      
-      // Topo da torre
-      const towerRoofGeometry = new THREE.ConeGeometry(
-        towerWidth / 2,
-        0.3,
-        8
-      );
-      
-      const towerRoof = new THREE.Mesh(towerRoofGeometry, roofMaterial);
-      towerRoof.position.y = towerHeight / 2 + 0.15;
-      towerRoof.castShadow = true;
-      
-      tower.add(towerRoof);
-      buildingGroup.add(tower);
-      
-      // Bandeira para os muito importantes
+      // Detalhes adicionais - cercas, jardim, etc.
       if (level >= 5) {
-        const flagpoleGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.5, 8);
-        const flagpoleMaterial = new THREE.MeshBasicMaterial({ color: 0x888888 });
-        const flagpole = new THREE.Mesh(flagpoleGeometry, flagpoleMaterial);
-        flagpole.position.y = 0.25;
-        
-        const flagGeometry = new THREE.PlaneGeometry(0.3, 0.2);
-        const flagMaterial = new THREE.MeshBasicMaterial({
-          color: new THREE.Color(colors.accent),
-          side: THREE.DoubleSide
-        });
-        
-        const flag = new THREE.Mesh(flagGeometry, flagMaterial);
-        flag.position.set(0.15, 0, 0);
-        flag.rotation.y = Math.PI / 2;
-        
-        flagpole.add(flag);
-        towerRoof.add(flagpole);
+        this.addExtraDetails(buildingGroup, width, height, colors);
       }
     }
+    
+    // Ajuste a posição Y do grupo inteiro para garantir que fique acima do terreno
+    buildingGroup.position.y += 0.05;
     
     return buildingGroup;
   }
   
   /**
-   * Cria uma torre grande
+   * Adiciona detalhes extras ao redor do edifício
    */
-  public createTower(
-    height: number,
+  private addExtraDetails(
+    buildingGroup: THREE.Group,
     width: number,
+    height: number,
     colors: ColorScheme
-  ): THREE.Group {
-    const towerGroup = new THREE.Group();
+  ): void {
+    const random = new RandomGenerator(Math.random() * 1000);
     
-    // Base da torre
-    const baseGeometry = new THREE.CylinderGeometry(
-      width * 0.6,
-      width,
-      height * 0.2,
-      16
-    );
+    // Adicionar cercas decorativas ou muros baixos
+    const fenceLength = width * 1.5;
+    const fenceHeight = 0.15;
+    const fenceThickness = 0.03;
     
-    const baseMaterial = new THREE.MeshPhongMaterial({
+    const fenceGeometry = new THREE.BoxGeometry(fenceLength, fenceHeight, fenceThickness);
+    const fenceMaterial = new THREE.MeshPhongMaterial({
       color: new THREE.Color(colors.primary),
-      specular: new THREE.Color(colors.specular),
       shininess: 30
     });
     
-    const base = new THREE.Mesh(baseGeometry, baseMaterial);
-    base.position.y = height * 0.1;
-    base.castShadow = true;
-    base.receiveShadow = true;
+    // Posicionar cercas nos lados do edifício
+    for (let i = 0; i < 2; i++) {
+      const fence = new THREE.Mesh(fenceGeometry, fenceMaterial);
+      fence.position.set(0, fenceHeight / 2, (i === 0 ? 1 : -1) * (width / 2 + fenceLength / 4));
+      fence.castShadow = true;
+      fence.receiveShadow = true;
+      
+      buildingGroup.add(fence);
+      
+      // Cerca lateral (perpendicular)
+      const sideFence = new THREE.Mesh(
+        new THREE.BoxGeometry(fenceThickness, fenceHeight, fenceLength / 2),
+        fenceMaterial
+      );
+      sideFence.position.set(
+        fenceLength / 2,
+        fenceHeight / 2,
+        (i === 0 ? 1 : -1) * (width / 4)
+      );
+      sideFence.castShadow = true;
+      sideFence.receiveShadow = true;
+      
+      buildingGroup.add(sideFence);
+    }
     
-    towerGroup.add(base);
-    
-    // Corpo da torre
-    const bodyGeometry = new THREE.CylinderGeometry(
-      width * 0.5,
-      width * 0.6,
-      height * 0.7,
-      16
-    );
-    
-    const bodyMaterial = new THREE.MeshPhongMaterial({
-      color: new THREE.Color(colors.secondary),
-      specular: new THREE.Color(colors.specular),
-      shininess: 30
+    // Adicionar alguns arbustos decorativos
+    for (let i = 0; i < 4; i++) {
+      const bushSize = 0.15 + random.next() * 0.1;
+      const bushGeometry = new THREE.SphereGeometry(bushSize, 8, 8);
+      const bushMaterial = new THREE.MeshPhongMaterial({
+        color: 0x2E8B57, // Verde
+        shininess: 15
+      });
+      
+      const bush = new THREE.Mesh(bushGeometry, bushMaterial);
+      
+      // Posicionar em locais estratégicos
+      const angle = (i / 4) * Math.PI * 2;
+      const distance = width * 0.8;
+      
+      bush.position.set(
+        Math.sin(angle) * distance,
+        bushSize,
+        Math.cos(angle) * distance
+      );
+      
+      bush.castShadow = true;
+      bush.receiveShadow = true;
+      
+      buildingGroup.add(bush);
+    }
+  }
+  
+  /**
+   * Adiciona um telhado corrigido ao edifício
+   */
+  private addRoof(
+    buildingGroup: THREE.Group,
+    width: number,
+    height: number,
+    level: number,
+    colors: ColorScheme
+  ): void {
+    // Escolher estilo de telhado baseado no level
+    if (level % 3 === 0) {
+      // Telhado plano com borda
+      this.addFlatRoof(buildingGroup, width, height, colors);
+    } else if (level % 3 === 1) {
+      // Telhado piramidal
+      this.addPyramidalRoof(buildingGroup, width, height, colors);
+    } else {
+      // Telhado de duas águas
+      this.addGableRoof(buildingGroup, width, height, colors);
+    }
+  }
+  
+  /**
+   * Adiciona um telhado plano com borda
+   */
+  private addFlatRoof(
+    buildingGroup: THREE.Group,
+    width: number,
+    height: number,
+    colors: ColorScheme
+  ): void {
+    // Base do telhado (plano)
+    const roofBaseGeometry = new THREE.BoxGeometry(width, 0.1, width);
+    const roofBaseMaterial = new THREE.MeshPhongMaterial({
+      color: new THREE.Color(colors.accent),
+      shininess: 20
     });
     
-    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.y = height * 0.5;
-    body.castShadow = true;
+    const roofBase = new THREE.Mesh(roofBaseGeometry, roofBaseMaterial);
+    roofBase.position.y = height + 0.05; // Posicionar acima do edifício
+    roofBase.castShadow = true;
     
-    towerGroup.add(body);
+    buildingGroup.add(roofBase);
     
-    // Topo da torre
-    const topGeometry = new THREE.CylinderGeometry(
-      width * 0.3,
-      width * 0.5,
-      height * 0.1,
-      16
-    );
+    // Borda do telhado (4 segmentos)
+    const borderWidth = 0.05;
+    const borderHeight = 0.1;
     
-    const top = new THREE.Mesh(topGeometry, baseMaterial);
-    top.position.y = height * 0.9;
-    top.castShadow = true;
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI * 2;
+      const borderLength = width;
+      
+      const borderGeometry = new THREE.BoxGeometry(borderLength, borderHeight, borderWidth);
+      const borderMaterial = new THREE.MeshPhongMaterial({
+        color: new THREE.Color(colors.primary),
+        shininess: 30
+      });
+      
+      const border = new THREE.Mesh(borderGeometry, borderMaterial);
+      
+      // Posicionar nas bordas do telhado
+      const halfWidth = width / 2;
+      const xOffset = Math.cos(angle) * halfWidth;
+      const zOffset = Math.sin(angle) * halfWidth;
+      
+      border.position.set(xOffset, height + 0.15, zOffset);
+      border.rotation.y = angle + Math.PI / 2; // Rotacionar para alinhar com a borda
+      
+      border.castShadow = true;
+      
+      buildingGroup.add(border);
+    }
+  }
+  
+  /**
+   * Adiciona um telhado piramidal
+   */
+  private addPyramidalRoof(
+    buildingGroup: THREE.Group,
+    width: number,
+    height: number,
+    colors: ColorScheme
+  ): void {
+    const roofHeight = 0.4; // Altura do telhado fixada para evitar distorções
     
-    towerGroup.add(top);
-    
-    // Telhado pontiagudo
-    const roofGeometry = new THREE.ConeGeometry(
-      width * 0.35,
-      height * 0.2,
-      16
-    );
-    
+    // Geometria piramidal = base quadrada
+    const roofGeometry = new THREE.ConeGeometry(width * 0.75, roofHeight, 4);
     const roofMaterial = new THREE.MeshPhongMaterial({
       color: new THREE.Color(colors.accent),
-      shininess: 50
+      shininess: 20
     });
     
     const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-    roof.position.y = height * 1.05;
+    roof.position.y = height + (roofHeight / 2);
+    roof.rotation.y = Math.PI / 4; // Rotacionar 45 graus para alinhar com a base
     roof.castShadow = true;
     
-    towerGroup.add(roof);
+    buildingGroup.add(roof);
+  }
+  
+  /**
+   * Adiciona um telhado de duas águas (gable roof)
+   */
+  private addGableRoof(
+    buildingGroup: THREE.Group,
+    width: number,
+    height: number,
+    colors: ColorScheme
+  ): void {
+    // Altura do telhado proporcional à largura, mas fixa para evitar distorções
+    const roofHeight = width * 0.6;
     
-    // Janelas
+    // Criar forma personalizada para telhado de duas águas
+    const shape = new THREE.Shape();
+    shape.moveTo(-width/2, 0);
+    shape.lineTo(0, roofHeight);
+    shape.lineTo(width/2, 0);
+    shape.lineTo(-width/2, 0);
+    
+    const extrudeSettings = {
+      steps: 1,
+      depth: width,
+      bevelEnabled: false
+    };
+    
+    const roofGeometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    const roofMaterial = new THREE.MeshPhongMaterial({
+      color: new THREE.Color(colors.accent),
+      shininess: 20
+    });
+    
+    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+    roof.position.y = height;
+    roof.position.z = -width / 2;
+    roof.castShadow = true;
+    
+    buildingGroup.add(roof);
+  }
+  
+  /**
+   * Adiciona janelas ao edifício
+   */
+  private addWindows(
+    buildingGroup: THREE.Group,
+    width: number,
+    height: number,
+    level: number
+  ): void {
+    const windowSize = 0.15;
+    const windowGeometry = new THREE.PlaneGeometry(windowSize, windowSize);
     const windowMaterial = new THREE.MeshPhongMaterial({
-      color: 0xffffaa,
+      color: 0xffffaa, // Amarelo claro para janelas iluminadas
       emissive: 0x555533,
+      emissiveIntensity: 0.5, // Aumentado para maior visibilidade
       specular: 0xffffff,
       shininess: 100
     });
     
-    // Adicionar janelas ao redor da torre
-    const windowCount = 8;
-    for (let i = 0; i < windowCount; i++) {
-      const angle = (i / windowCount) * Math.PI * 2;
-      const windowRadius = width * 0.55;
+    // Número de andares baseado no nível
+    const floors = Math.max(1, Math.min(level, 4));
+    
+    // Janelas em cada lado do edifício
+    for (let floor = 0; floor < floors; floor++) {
+      const y = 0.3 + floor * 0.4; // Altura da janela
       
-      const windowGeometry = new THREE.PlaneGeometry(0.2, 0.3);
-      const windowMesh = new THREE.Mesh(windowGeometry, windowMaterial);
-      
-      windowMesh.position.set(
-        Math.cos(angle) * windowRadius,
-        height * 0.5,
-        Math.sin(angle) * windowRadius
-      );
-      
-      windowMesh.rotation.y = angle + Math.PI / 2;
-      
-      towerGroup.add(windowMesh);
+      // 4 lados do edifício
+      for (let side = 0; side < 4; side++) {
+        // Rotação para cada lado
+        const rotation = (side / 4) * Math.PI * 2;
+        
+        // Deslocamento para frente do respectivo lado
+        const xOffset = Math.sin(rotation) * (width / 2 + 0.01);
+        const zOffset = Math.cos(rotation) * (width / 2 + 0.01);
+        
+        const window = new THREE.Mesh(windowGeometry, windowMaterial);
+        window.position.set(xOffset, y, zOffset);
+        window.rotation.y = rotation;
+        
+        buildingGroup.add(window);
+      }
     }
     
-    return towerGroup;
+    // Para edifícios mais altos, adicionar porta na frente
+    if (level >= 4) {
+      const doorGeometry = new THREE.PlaneGeometry(windowSize * 1.2, windowSize * 2);
+      const doorMaterial = new THREE.MeshPhongMaterial({
+        color: 0x4d2926, // Cor de madeira escura
+        shininess: 50
+      });
+      
+      const door = new THREE.Mesh(doorGeometry, doorMaterial);
+      door.position.set(0, windowSize, width / 2 + 0.01);
+      door.rotation.y = Math.PI;
+      
+      buildingGroup.add(door);
+    }
   }
   
   /**
-   * Cria um monumento baseado no estilo
+   * Adiciona uma torre ao edifício
    */
-  public createMonument(
+  private addTower(
+    buildingGroup: THREE.Group,
+    width: number,
     height: number,
-    style: string,
-    colors: ColorScheme
-  ): THREE.Group {
-    const monumentGroup = new THREE.Group();
+    level: number,
+    colors: ColorScheme,
+    fusionLevel: number
+  ): void {
+    const towerWidth = width * 0.4;
+    const towerHeight = height * 0.6;
     
-    switch (style) {
-      case 'obelisk':
-        return this.createObelisk(height, colors);
-      case 'statue':
-        return this.createStatue(height, colors);
-      case 'arch':
-        return this.createArch(height, colors);
-      default:
-        return this.createObelisk(height, colors);
+    // Posição da torre (canto do edifício)
+    const towerX = width / 2 - towerWidth / 2;
+    const towerZ = width / 2 - towerWidth / 2;
+    
+    // Corpo da torre
+    const towerGeometry = new THREE.CylinderGeometry(
+      towerWidth / 2,
+      towerWidth / 2,
+      towerHeight,
+      8
+    );
+    
+    const towerMaterial = new THREE.MeshPhongMaterial({
+      color: new THREE.Color(colors.secondary),
+      specular: new THREE.Color(colors.specular),
+      shininess: 30
+    });
+    
+    const tower = new THREE.Mesh(towerGeometry, towerMaterial);
+    tower.position.set(towerX, height + (towerHeight / 2), towerZ);
+    tower.castShadow = true;
+    
+    // Telhado cônico para a torre
+    const towerRoofGeometry = new THREE.ConeGeometry(
+      towerWidth / 2 + 0.05, // Ligeiramente maior que a torre para um efeito de beiral
+      0.3,
+      8
+    );
+    
+    const towerRoofMaterial = new THREE.MeshPhongMaterial({
+      color: new THREE.Color(colors.accent),
+      shininess: 20
+    });
+    
+    const towerRoof = new THREE.Mesh(towerRoofGeometry, towerRoofMaterial);
+    towerRoof.position.y = towerHeight / 2 + 0.15;
+    towerRoof.castShadow = true;
+    
+    tower.add(towerRoof);
+    buildingGroup.add(tower);
+    
+    // Adicionar janela na torre
+    const towerWindowGeometry = new THREE.PlaneGeometry(0.1, 0.1);
+    const towerWindowMaterial = new THREE.MeshPhongMaterial({
+      color: 0xffffaa,
+      emissive: 0x555533,
+      emissiveIntensity: 0.5,
+      specular: 0xffffff,
+      shininess: 100
+    });
+    
+    // Adicionar pequenas janelas ao redor da torre (4 lados)
+    for (let i = 0; i < 4; i++) {
+      const angle = (i / 4) * Math.PI * 2;
+      const windowX = Math.sin(angle) * (towerWidth / 2 + 0.01);
+      const windowZ = Math.cos(angle) * (towerWidth / 2 + 0.01);
+      
+      const towerWindow = new THREE.Mesh(towerWindowGeometry, towerWindowMaterial);
+      towerWindow.position.set(windowX, towerHeight * 0.3, windowZ);
+      towerWindow.rotation.y = angle;
+      
+      tower.add(towerWindow);
     }
-  }
-  
-  // Métodos privados para criar tipos específicos de monumentos
-  
-  private createObelisk(height: number, colors: ColorScheme): THREE.Group {
-    const obeliskGroup = new THREE.Group();
     
-    // Base
-    const baseGeometry = new THREE.BoxGeometry(height * 0.4, height * 0.1, height * 0.4);
-    const baseMaterial = new THREE.MeshPhongMaterial({
-      color: new THREE.Color(colors.primary),
-      specular: new THREE.Color(colors.specular),
-      shininess: 30
-    });
-    
-    const base = new THREE.Mesh(baseGeometry, baseMaterial);
-    base.position.y = height * 0.05;
-    base.castShadow = true;
-    base.receiveShadow = true;
-    
-    obeliskGroup.add(base);
-    
-    // Corpo
-    const bodyGeometry = new THREE.BoxGeometry(
-      height * 0.15,
-      height * 0.8,
-      height * 0.15
-    );
-    
-    const bodyMaterial = new THREE.MeshPhongMaterial({
-      color: new THREE.Color(colors.secondary),
-      specular: new THREE.Color(colors.specular),
-      shininess: 40
-    });
-    
-    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.y = height * 0.5;
-    body.castShadow = true;
-    
-    obeliskGroup.add(body);
-    
-    // Ponta
-    const tipGeometry = new THREE.ConeGeometry(
-      height * 0.08,
-      height * 0.2,
-      4
-    );
-    
-    const tipMaterial = new THREE.MeshPhongMaterial({
-      color: new THREE.Color(colors.accent),
-      specular: new THREE.Color(colors.specular),
-      shininess: 80
-    });
-    
-    const tip = new THREE.Mesh(tipGeometry, tipMaterial);
-    tip.position.y = height * 1.0;
-    tip.castShadow = true;
-    
-    obeliskGroup.add(tip);
-    
-    return obeliskGroup;
-  }
-  
-  private createStatue(height: number, colors: ColorScheme): THREE.Group {
-    const statueGroup = new THREE.Group();
-    
-    // Base
-    const baseGeometry = new THREE.CylinderGeometry(
-      height * 0.3,
-      height * 0.4,
-      height * 0.15,
-      16
-    );
-    
-    const baseMaterial = new THREE.MeshPhongMaterial({
-      color: new THREE.Color(colors.primary),
-      specular: new THREE.Color(colors.specular),
-      shininess: 30
-    });
-    
-    const base = new THREE.Mesh(baseGeometry, baseMaterial);
-    base.position.y = height * 0.075;
-    base.castShadow = true;
-    base.receiveShadow = true;
-    
-    statueGroup.add(base);
-    
-    // Forma humanoide simplificada (para manter baixa poligonagem)
-    // Torso
-    const torsoGeometry = new THREE.CylinderGeometry(
-      height * 0.1,
-      height * 0.15,
-      height * 0.4,
-      8
-    );
-    
-    const statueMaterial = new THREE.MeshPhongMaterial({
-      color: new THREE.Color(colors.accent),
-      specular: new THREE.Color(colors.specular),
-      shininess: 50
-    });
-    
-    const torso = new THREE.Mesh(torsoGeometry, statueMaterial);
-    torso.position.y = height * 0.35;
-    torso.castShadow = true;
-    
-    statueGroup.add(torso);
-    
-    // Cabeça
-    const headGeometry = new THREE.SphereGeometry(height * 0.08, 8, 8);
-    const head = new THREE.Mesh(headGeometry, statueMaterial);
-    head.position.y = height * 0.6;
-    head.castShadow = true;
-    
-    statueGroup.add(head);
-    
-    // Braços
-    const armGeometry = new THREE.CylinderGeometry(
-      height * 0.03,
-      height * 0.03,
-      height * 0.25,
-      8
-    );
-    
-    // Braço esquerdo
-    const leftArm = new THREE.Mesh(armGeometry, statueMaterial);
-    leftArm.position.set(height * 0.15, height * 0.4, 0);
-    leftArm.rotation.z = Math.PI / 3;
-    leftArm.castShadow = true;
-    
-    statueGroup.add(leftArm);
-    
-    // Braço direito
-    const rightArm = new THREE.Mesh(armGeometry, statueMaterial);
-    rightArm.position.set(-height * 0.15, height * 0.4, 0);
-    rightArm.rotation.z = -Math.PI / 3;
-    rightArm.castShadow = true;
-    
-    statueGroup.add(rightArm);
-    
-    return statueGroup;
-  }
-  
-// src/Maps3d/3d/ornaments/BuildingGenerator.ts (continuação)
-  private createArch(height: number, colors: ColorScheme): THREE.Group {
-    const archGroup = new THREE.Group();
-    
-    // Material para o arco
-    const archMaterial = new THREE.MeshPhongMaterial({
-      color: new THREE.Color(colors.primary),
-      specular: new THREE.Color(colors.specular),
-      shininess: 30
-    });
-    
-    // Pilares
-    const pillarGeometry = new THREE.BoxGeometry(
-      height * 0.2,
-      height * 0.7,
-      height * 0.2
-    );
-    
-    const leftPillar = new THREE.Mesh(pillarGeometry, archMaterial);
-    leftPillar.position.set(-height * 0.4, height * 0.35, 0);
-    leftPillar.castShadow = true;
-    leftPillar.receiveShadow = true;
-    
-    const rightPillar = new THREE.Mesh(pillarGeometry, archMaterial);
-    rightPillar.position.set(height * 0.4, height * 0.35, 0);
-    rightPillar.castShadow = true;
-    rightPillar.receiveShadow = true;
-    
-    archGroup.add(leftPillar);
-    archGroup.add(rightPillar);
-    
-    // Parte superior do arco (abordagem simplificada)
-    const topArchGeometry = new THREE.BoxGeometry(
-      height * 0.9,
-      height * 0.1,
-      height * 0.2
-    );
-    
-    const topArch = new THREE.Mesh(topArchGeometry, archMaterial);
-    topArch.position.set(0, height * 0.8, 0);
-    topArch.castShadow = true;
-    
-    archGroup.add(topArch);
-    
-    // Decoração no topo
-    const decorationGeometry = new THREE.BoxGeometry(
-      height * 1.0,
-      height * 0.2,
-      height * 0.25
-    );
-    
-    const decorationMaterial = new THREE.MeshPhongMaterial({
-      color: new THREE.Color(colors.secondary),
-      specular: new THREE.Color(colors.specular),
-      shininess: 30
-    });
-    
-    const decoration = new THREE.Mesh(decorationGeometry, decorationMaterial);
-    decoration.position.set(0, height * 0.95, 0);
-    decoration.castShadow = true;
-    
-    archGroup.add(decoration);
-    
-    return archGroup;
+    // Adicionar bandeira no topo para níveis altos
+    if (level >= 5) {
+      // Mastro da bandeira
+      const flagpoleGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.4, 8);
+      const flagpoleMaterial = new THREE.MeshBasicMaterial({ color: 0x888888 });
+      const flagpole = new THREE.Mesh(flagpoleGeometry, flagpoleMaterial);
+      flagpole.position.y = 0.25; // Posição relativa ao telhado
+      flagpole.castShadow = true;
+      
+      // Bandeira
+      const flagGeometry = new THREE.PlaneGeometry(0.2, 0.15);
+      const flagMaterial = new THREE.MeshPhongMaterial({
+        color: new THREE.Color(colors.accent),
+        side: THREE.DoubleSide,
+        shininess: 30
+      });
+      
+      const flag = new THREE.Mesh(flagGeometry, flagMaterial);
+      flag.position.set(0.12, 0.05, 0); // Deslocado do mastro
+      flag.rotation.y = Math.PI / 2;
+      flag.castShadow = true;
+      
+      // Adicionar a bandeira ao mastro
+      flagpole.add(flag);
+      
+      // Adicionar o mastro ao telhado da torre
+      towerRoof.add(flagpole);
+    }
   }
 }
