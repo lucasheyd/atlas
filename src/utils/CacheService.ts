@@ -1,7 +1,7 @@
 // src/utils/CacheService.ts
 
 /**
- * Interface para item de cache com TTL (tempo de vida)
+ * Interface for item of cache with TTL (time of life)
  */
 interface CacheItem<T> {
   data: T;
@@ -10,76 +10,61 @@ interface CacheItem<T> {
 }
 
 /**
- * Serviço de cache na memória e persistente
- * Implementa cache em dois níveis:
- * 1. Memória (mais rápido, perdido após recarregar a página)
- * 2. localStorage (persistente, mantido entre recargas)
+ * Simple cache service with memory and localStorage support
  */
 export class CacheService {
   private static CACHE_PREFIX = 'crypto_atlas_';
   private static memoryCache = new Map<string, CacheItem<any>>();
   
-  // TTLs padrão para diferentes tipos de dados
-  static readonly TTL = {
-    TOKEN_EXISTS: 12 * 60 * 60 * 1000,  // 12 horas
-    NFT_DATA: 30 * 60 * 1000,           // 30 minutos
-    TERRITORY_DATA: 5 * 60 * 1000,      // 5 minutos
-    NETWORK_DATA: 24 * 60 * 60 * 1000,  // 24 horas
-    CONTRACT_INFO: 12 * 60 * 60 * 1000, // 12 horas
-    METADATA: 60 * 60 * 1000            // 1 hora
-  };
-  
   /**
-   * Obtém um item do cache (primeiro memória, depois localStorage)
-   * @param key A chave do item
-   * @returns O valor armazenado ou null se não encontrado ou expirado
+   * Gets an item from cache
+   * @param key Cache key
+   * @returns The cached value or null if not found or expired
    */
   static get<T>(key: string): T | null {
     const fullKey = `${this.CACHE_PREFIX}${key}`;
     
-    // Primeiro, verificar memória
+    // Check memory cache first (faster)
     const memItem = this.memoryCache.get(fullKey);
     if (memItem) {
-      // Verificar expiração
+      // Check if expired
       if (Date.now() < memItem.timestamp + memItem.ttl) {
         return memItem.data;
       }
-      
-      // Se expirou, remover da memória
+      // Remove if expired
       this.memoryCache.delete(fullKey);
     }
     
-    // Se não estiver na memória ou expirou, verificar localStorage
+    // Try localStorage if not in memory or expired
     try {
       const stored = localStorage.getItem(fullKey);
       if (!stored) return null;
       
       const item = JSON.parse(stored) as CacheItem<T>;
       
-      // Verificar expiração
+      // Check if expired
       if (Date.now() > item.timestamp + item.ttl) {
         localStorage.removeItem(fullKey);
         return null;
       }
       
-      // Armazenar na memória para acelerar próximos acessos
+      // Also store in memory for faster access next time
       this.memoryCache.set(fullKey, item);
       
       return item.data;
-    } catch (err) {
-      console.debug('Falha ao recuperar do localStorage:', err);
+    } catch (error) {
+      console.debug('Error retrieving from localStorage:', error);
       return null;
     }
   }
   
   /**
-   * Armazena um item no cache (memória e localStorage)
-   * @param key A chave do item
-   * @param data Os dados a serem armazenados
-   * @param ttl O tempo de vida em milissegundos
-   * @param persistToStorage Se deve persistir para localStorage (padrão: true)
+   * Stores an item in cache
+   * @param key Cache key
+   * @param data Data to store
+   * @param ttl Time to live in milliseconds
    */
-  static set<T>(key: string, data: T, ttl: number, persistToStorage = true): void {
+  static set<T>(key: string, data: T, ttl: number = 5 * 60 * 1000): void {
     const fullKey = `${this.CACHE_PREFIX}${key}`;
     
     const item: CacheItem<T> = {
@@ -88,34 +73,32 @@ export class CacheService {
       ttl
     };
     
-    // Armazenar na memória
+    // Store in memory cache
     this.memoryCache.set(fullKey, item);
     
-    // Armazenar no localStorage
-    if (persistToStorage) {
-      try {
-        localStorage.setItem(fullKey, JSON.stringify(item));
-      } catch (err) {
-        console.debug('Falha ao armazenar no localStorage:', err);
+    // Try to store in localStorage for persistence
+    try {
+      localStorage.setItem(fullKey, JSON.stringify(item));
+    } catch (error) {
+      console.debug('Error storing in localStorage:', error);
+      
+      // If quota exceeded, clear older items and try again
+      if (error instanceof DOMException && 
+         (error.code === 22 || error.name === 'QuotaExceededError')) {
+        this.clearOldItems();
         
-        // Em caso de cota excedida, limpar itens antigos
-        if (err instanceof DOMException && (err.code === 22 || err.name === 'QuotaExceededError')) {
-          this.clearOldItems();
-          
-          // Tentar novamente
-          try {
-            localStorage.setItem(fullKey, JSON.stringify(item));
-          } catch {
-            // Ignorar se ainda falhar
-          }
+        try {
+          localStorage.setItem(fullKey, JSON.stringify(item));
+        } catch (e) {
+          // Ignore if still fails
         }
       }
     }
   }
   
   /**
-   * Remove um item do cache (memória e localStorage)
-   * @param key A chave do item
+   * Removes an item from cache
+   * @param key Cache key
    */
   static remove(key: string): void {
     const fullKey = `${this.CACHE_PREFIX}${key}`;
@@ -123,117 +106,75 @@ export class CacheService {
     
     try {
       localStorage.removeItem(fullKey);
-    } catch (err) {
-      console.debug('Falha ao remover do localStorage:', err);
+    } catch (error) {
+      console.debug('Error removing from localStorage:', error);
     }
   }
   
   /**
-   * Limpa todos os itens de cache
-   */
-  static clear(): void {
-    this.memoryCache.clear();
-    
-    try {
-      // Remover apenas os itens do nosso prefixo
-      const keysToRemove = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith(this.CACHE_PREFIX)) {
-          keysToRemove.push(key);
-        }
-      }
-      
-      keysToRemove.forEach(key => localStorage.removeItem(key));
-    } catch (err) {
-      console.debug('Falha ao limpar localStorage:', err);
-    }
-  }
-  
-  /**
-   * Limpa itens expirados ou mais antigos para liberar espaço
-   */
-  private static clearOldItems(): void {
-    try {
-      // Primeiro, remover itens expirados
-      const keysToCheck = [];
-      const now = Date.now();
-      
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith(this.CACHE_PREFIX)) {
-          keysToCheck.push(key);
-        }
-      }
-      
-      // Coletar informações sobre os itens
-      const items: { key: string; timestamp: number; ttl: number; expiry: number }[] = [];
-      
-      keysToCheck.forEach(key => {
-        try {
-          const item = JSON.parse(localStorage.getItem(key) || '{}');
-          if (item.timestamp && item.ttl) {
-            items.push({
-              key,
-              timestamp: item.timestamp,
-              ttl: item.ttl,
-              expiry: item.timestamp + item.ttl
-            });
-          }
-        } catch {
-          // Ignorar itens mal-formados
-          localStorage.removeItem(key);
-        }
-      });
-      
-      // Remover itens já expirados
-      items.filter(item => now > item.expiry).forEach(item => localStorage.removeItem(item.key));
-      
-      // Se precisarmos de mais espaço, remover os 25% mais antigos
-      if (items.length > 20) { // Limitar apenas se houver muitos itens
-        items
-          .sort((a, b) => a.timestamp - b.timestamp) // Ordenar pelo timestamp (mais antigos primeiro)
-          .slice(0, Math.ceil(items.length * 0.25)) // Pegar os 25% mais antigos
-          .forEach(item => localStorage.removeItem(item.key));
-      }
-    } catch (err) {
-      console.debug('Falha ao limpar itens antigos:', err);
-    }
-  }
-  
-  /**
-   * Atualiza o TTL de um item já existente no cache
-   * @param key A chave do item
-   * @param newTTL O novo TTL em milissegundos
-   */
-  static updateTTL(key: string, newTTL: number): void {
-    const fullKey = `${this.CACHE_PREFIX}${key}`;
-    
-    // Atualizar na memória
-    const memItem = this.memoryCache.get(fullKey);
-    if (memItem) {
-      memItem.ttl = newTTL;
-    }
-    
-    // Atualizar no localStorage
-    try {
-      const stored = localStorage.getItem(fullKey);
-      if (stored) {
-        const item = JSON.parse(stored);
-        item.ttl = newTTL;
-        localStorage.setItem(fullKey, JSON.stringify(item));
-      }
-    } catch (err) {
-      console.debug('Falha ao atualizar TTL no localStorage:', err);
-    }
-  }
-  
-  /**
-   * Verifica se um item específico existe no cache e não está expirado
-   * @param key A chave do item
-   * @returns true se o item existe e é válido, false caso contrário
+   * Checks if a key exists in the cache and is not expired
+   * @param key Cache key
+   * @returns True if key exists and is not expired
    */
   static has(key: string): boolean {
     return this.get(key) !== null;
+  }
+  
+  /**
+   * Clears all cached items
+   */
+  static clearAll(): void {
+    this.memoryCache.clear();
+    
+    try {
+      // Only clear items with our prefix
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(this.CACHE_PREFIX)) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch (error) {
+      console.debug('Error clearing localStorage:', error);
+    }
+  }
+  
+  /**
+   * Removes old items to free up space
+   * Strategy: Remove expired items first, then oldest items
+   */
+  private static clearOldItems(): void {
+    try {
+      const itemsToCheck: { key: string; timestamp: number }[] = [];
+      
+      // Find all our cache items
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(this.CACHE_PREFIX)) {
+          try {
+            const item = JSON.parse(localStorage.getItem(key) || '{}');
+            if (item.timestamp) {
+              itemsToCheck.push({ key, timestamp: item.timestamp });
+            }
+          } catch (e) {
+            // If item is corrupt, remove it
+            localStorage.removeItem(key);
+          }
+        }
+      }
+      
+      // Sort by age (oldest first)
+      itemsToCheck.sort((a, b) => a.timestamp - b.timestamp);
+      
+      // Remove oldest 25% if we have many items
+      if (itemsToCheck.length > 20) {
+        const toRemove = Math.ceil(itemsToCheck.length * 0.25);
+        itemsToCheck.slice(0, toRemove).forEach(item => {
+          localStorage.removeItem(item.key);
+        });
+      }
+    } catch (error) {
+      console.debug('Error clearing old items:', error);
+    }
   }
 }

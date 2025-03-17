@@ -1,354 +1,194 @@
-// src/services/OptimizedNFTService.ts
-import { ethers } from 'ethers';
+// src/services/OptimizedAtlasService.ts
+
 import { CacheService } from '../utils/CacheService';
-import { ActivityData } from '../Maps3d/types/ActivityData';
-
-// Endereços dos contratos
-const CONTRACTS = {
-  CRYPTO_ATLAS_NFT: '0x1A3B7cD224453cDF2EAeF79eaCFfB737E7207878',
-  NETWORK_REGISTRY: '0x821587E27f9296677928d6b8045de8fdB1E20bd3',
-  TERRITORY_DATA_STORE: '0xA5295C041B3Bd8dC2C7F0313Dc9808Ba484D7Ffe',
-  ATLAS_RENDERER_CORE: '0x5278e3F3C5dF2ceD17588e69e49bEB3374C15D42'
-};
-
-// ABIs simplificados
-const NFT_ABI = [
-  "function ownerOf(uint256 tokenId) view returns (address)",
-  "function tokenURI(uint256 tokenId) view returns (string)",
-  "function getFusionLevel(uint256 tokenId) view returns (uint8)",
-  "function getTokenFullData(uint256 tokenId) view returns (string, string[], uint8, string, string)",
-  "function getActiveNetworks(uint256 tokenId) view returns (string[])",
-  "function exists(uint256 tokenId) view returns (bool)",
-  "function totalSupply() view returns (uint256)"
-];
-
-const TERRITORY_DATA_STORE_ABI = [
-  "function getTerritoryActivity(uint256 tokenId, string memory networkId) external view returns (uint256 balance, uint256 nftCount, uint256 transactions, uint256 stakedAmount, uint256 lastUpdate)"
-];
+import { NFTService } from './NFTService';
+import { AtlasModuleLoader } from '../Maps3d/AtlasModuleLoader';
+import { DEFAULT_NETWORK_CONNECTIONS } from '../Maps3d/data/DefaultNetworks';
+import { Territory } from '../Maps3d/types/Territory';
+import { NetworkConnection } from '../Maps3d/types/Network';
 
 /**
- * Interface para os dados do NFT
+ * Optimized service for loading Atlas NFT data
+ * Implements aggressive caching, preloading, and fallbacks
  */
-export interface NFTData {
-  exists: boolean;
-  owner: string;
-  fusionLevel: number;
-  activeNetworks: string[];
-  customName?: string;
-  metadata?: any;
-}
-
-/**
- * Serviço otimizado para interagir com NFTs de Atlas com cache embutido
- */
-export class OptimizedNFTService {
-  // Configuração do provedor
-  private static provider = new ethers.providers.JsonRpcProvider("https://sepolia.base.org");
-  
-  // Provider com fallback em caso de falha
-  private static getProvider() {
-    // Se o provedor principal falhar, tentar conexão com provedor de fallback
-    return this.provider;
-  }
-  
+export class OptimizedAtlasService {
   /**
-   * Cria uma instância do contrato NFT com um provedor específico
+   * Load all territories for a token with optimizations
+   * @param tokenId The token ID to load
    */
-  private static async getNFTContract() {
-    const provider = this.getProvider();
-    return new ethers.Contract(CONTRACTS.CRYPTO_ATLAS_NFT, NFT_ABI, provider);
-  }
-  
-  /**
-   * Cria uma instância do contrato TerritoryDataStore com um provedor específico
-   */
-  private static async getTerritoryContract() {
-    const provider = this.getProvider();
-    return new ethers.Contract(CONTRACTS.TERRITORY_DATA_STORE, TERRITORY_DATA_STORE_ABI, provider);
-  }
-  
-  /**
-   * Verifica se o token existe no contrato
-   * @param tokenId ID do token NFT
-   */
-  public static async tokenExists(tokenId: string): Promise<boolean> {
-    const cacheKey = `token_exists_${tokenId}`;
+  public static async loadOptimizedTerritories(tokenId: string): Promise<{
+    territories: Territory[];
+    connections: NetworkConnection[];
+    usingFallback: boolean;
+    owner: string | null;
+    fusionLevel: number;
+    customName: string;
+  }> {
+    // Check cache first
+    const cacheKey = `atlas_data_${tokenId}`;
+    const cachedData = CacheService.get(cacheKey);
     
-    // Verificar cache primeiro
-    const cachedData = CacheService.get<boolean>(cacheKey);
-    if (cachedData !== null) {
+    if (cachedData) {
+      console.log(`Using cached data for token #${tokenId}`);
       return cachedData;
     }
     
     try {
-      // Conectar ao contrato NFT
-      const nftContract = await this.getNFTContract();
+      // Try to get real data
+      console.log(`Loading real NFT data for token #${tokenId}`);
       
-      // Alguns contratos têm uma função "exists"
-      let exists: boolean;
-      try {
-        exists = await nftContract.exists(tokenId);
-      } catch (e) {
-        // Se não tiver a função "exists", tenta chamar ownerOf
-        try {
-          await nftContract.ownerOf(tokenId);
-          exists = true;
-        } catch (e) {
-          exists = false;
-        }
-      }
+      // Get NFT data (owner, fusion level, active networks)
+      const nftData = await NFTService.getNFTData(tokenId);
       
-      // Armazenar em cache
-      CacheService.set(cacheKey, exists, CacheService.TTL.TOKEN_EXISTS);
-      return exists;
-    } catch (error) {
-      console.error(`Error checking if token #${tokenId} exists:`, error);
-      return false;
-    }
-  }
-  
-  /**
-   * Obtém dados básicos do NFT a partir do seu ID
-   * @param tokenId ID do token NFT
-   */
-  public static async getNFTData(tokenId: string): Promise<NFTData> {
-    const cacheKey = `nft_data_${tokenId}`;
-    
-    // Verificar cache primeiro
-    const cachedData = CacheService.get<NFTData>(cacheKey);
-    if (cachedData !== null) {
-      console.log(`Using cached NFT data for token #${tokenId}`);
-      return cachedData;
-    }
-    
-    try {
-      console.log(`Fetching NFT data for token #${tokenId}`);
+      // Load territories using the built-in module loader
+      const territories = AtlasModuleLoader.loadTerritories(
+        tokenId,
+        nftData.activeNetworks,
+        nftData.fusionLevel
+      );
       
-      // Verificar primeiro se o token existe
-      const exists = await this.tokenExists(tokenId);
-      if (!exists) {
-        console.log(`Token #${tokenId} does not exist.`);
-        const defaultData = {
-          exists: false,
-          owner: ethers.constants.AddressZero,
-          fusionLevel: 1,
-          activeNetworks: []
-        };
-        
-        // Cache por um tempo mais curto para tokens que não existem
-        CacheService.set(cacheKey, defaultData, 5 * 60 * 1000); // 5 minutos
-        return defaultData;
-      }
+      // Load connections
+      const connections = AtlasModuleLoader.loadConnections(
+        territories,
+        DEFAULT_NETWORK_CONNECTIONS
+      );
       
-      // Conectar ao contrato NFT
-      const nftContract = await this.getNFTContract();
-      
-      // Preparar para buscar dados em paralelo
-      const ownerPromise = nftContract.ownerOf(tokenId).catch(() => ethers.constants.AddressZero);
-      const fusionLevelPromise = nftContract.getFusionLevel(tokenId).catch(() => 1);
-      const activeNetworksPromise = nftContract.getActiveNetworks(tokenId).catch(() => []);
-      const fullDataPromise = nftContract.getTokenFullData(tokenId).catch(() => ['', [], 0, '', '']);
-      
-      // Aguardar todas as promessas
-      const [owner, fusionLevel, activeNetworks, fullData] = await Promise.all([
-        ownerPromise, fusionLevelPromise, activeNetworksPromise, fullDataPromise
-      ]);
-      
-      // Extrair nome personalizado dos dados completos
-      const customName = fullData[0] || `Crypto Atlas #${tokenId}`;
-      
-      // Construir resultado
-      const result: NFTData = {
-        exists: true,
-        owner,
-        fusionLevel: parseInt(fusionLevel.toString()),
-        activeNetworks: activeNetworks || [],
-        customName
-      };
-      
-      // Armazenar em cache
-      CacheService.set(cacheKey, result, CacheService.TTL.NFT_DATA);
-      return result;
-    } catch (error) {
-      console.error(`Error fetching NFT data for token #${tokenId}:`, error);
-      
-      // Retornar dados básicos em caso de erro
-      return {
-        exists: false,
-        owner: ethers.constants.AddressZero,
-        fusionLevel: 1,
-        activeNetworks: []
-      };
-    }
-  }
-  
-/**
- * Obtém dados de um território específico armazenados no contrato
- * @param tokenId ID do token NFT
- * @param networkId ID da rede
- */
-public static async getTerritoryContractData(
-  tokenId: string,
-  networkId: string
-): Promise<ActivityData> {
-  const cacheKey = `territory_data_${tokenId}_${networkId}`;
-  
-  // Verificar cache primeiro
-  const cachedData = CacheService.get<ActivityData>(cacheKey);
-  if (cachedData !== null) {
-    console.log(`Using cached territory data for token #${tokenId}, network ${networkId}`);
-    return cachedData;
-  }
-  
-  try {
-    // Verificar se o token existe
-    const exists = await this.tokenExists(tokenId);
-    if (!exists) {
-      const defaultData = this.getDefaultActivityData();
-      CacheService.set(cacheKey, defaultData, 60 * 1000); // Cache curto (1 minuto)
-      return defaultData;
-    }
-    
-    // Verificar se o território está ativo para este token
-    const nftData = await this.getNFTData(tokenId);
-    if (!nftData.activeNetworks.includes(networkId)) {
-      console.warn(`Territory ${networkId} is not active for token #${tokenId}`);
-      const defaultData = this.getDefaultActivityData();
-      CacheService.set(cacheKey, defaultData, 60 * 1000); // Cache curto (1 minuto)
-      return defaultData;
-    }
-    
-    // Conectar ao contrato TerritoryDataStore
-    const territoryContract = await this.getTerritoryContract();
-    
-    // Buscar dados do território
-    const data = await territoryContract.getTerritoryActivity(tokenId, networkId);
-    
-    const result = {
-      balance: parseFloat(ethers.utils.formatEther(data.balance)),
-      nftCount: parseInt(data.nftCount.toString()),
-      transactions: parseInt(data.transactions.toString()),
-      stakedAmount: parseFloat(ethers.utils.formatEther(data.stakedAmount)),
-      lastUpdate: parseInt(data.lastUpdate.toString())
-    };
-    
-    // Armazenar em cache
-    CacheService.set(cacheKey, result, CacheService.TTL.TERRITORY_DATA);
-    return result;
-  } catch (error) {
-    console.error(`Error fetching territory data for token #${tokenId} and network ${networkId}:`, error);
-    
-    // Se o erro for "Territory not active", não é um erro crítico
-    if (error.reason === "Territory not active") {
-      console.warn(`Territory ${networkId} is not active for token #${tokenId}`);
-    }
-    
-    // Retornar dados zerados em caso de erro
-    const defaultData = this.getDefaultActivityData();
-    
-    // Cache por menos tempo em caso de erro
-    CacheService.set(cacheKey, defaultData, 60 * 1000); // 1 minuto
-    
-    return defaultData;
-  }
-}
-
-/**
- * Retorna um objeto ActivityData com valores padrão zerados
- */
-private static getDefaultActivityData(): ActivityData {
-  return {
-    balance: 0,
-    nftCount: 0,
-    transactions: 0,
-    stakedAmount: 0,
-    lastUpdate: Math.floor(Date.now() / 1000)
-  };
-}
-    
-  /**
-   * Obtém informações sobre o supply do contrato NFT
-   */
-  public static async getContractInfo(): Promise<{ totalSupply: number }> {
-    const cacheKey = `contract_info`;
-    
-    // Verificar cache primeiro
-    const cachedData = CacheService.get<{ totalSupply: number }>(cacheKey);
-    if (cachedData !== null) {
-      return cachedData;
-    }
-    
-    try {
-      // Conectar ao contrato NFT
-      const nftContract = await this.getNFTContract();
-      
-      // Obter oferta total
-      const totalSupply = await nftContract.totalSupply();
-      
+      // Prepare result
       const result = {
-        totalSupply: parseInt(totalSupply.toString())
+        territories,
+        connections,
+        usingFallback: false,
+        owner: nftData.owner,
+        fusionLevel: nftData.fusionLevel,
+        customName: nftData.customName || `Crypto Atlas #${tokenId}`
       };
       
-      // Armazenar em cache
-      CacheService.set(cacheKey, result, CacheService.TTL.CONTRACT_INFO);
+      // Cache the result
+      CacheService.set(cacheKey, result, 5 * 60 * 1000); // 5 minutes
+      
+      // Start preloading territory activity data
+      this.preloadTerritoryData(tokenId, territories.slice(0, 3).map(t => t.id));
+      
       return result;
     } catch (error) {
-      console.error("Error fetching contract info:", error);
+      console.error(`Error loading NFT data for token #${tokenId}:`, error);
+      
+      // Fallback to demo data if real data fails
+      console.log(`Using fallback data for token #${tokenId}`);
+      return this.loadFallbackData(tokenId);
+    }
+  }
+  
+  /**
+   * Load fallback data for demo purposes
+   */
+  private static async loadFallbackData(tokenId: string): Promise<any> {
+    try {
+      // Generate demo fusion level based on token ID
+      const demoFusionLevel = Math.max(1, (parseInt(tokenId) % 5) || 1);
+      
+      // Generate active networks based on fusion level
+      const availableNetworks = [
+        "ethereum", "polygon", "arbitrum", "optimism", 
+        "avalanche", "base", "zksync"
+      ];
+      
+      // Ethereum is always active
+      let activeNetworks = ["ethereum"];
+      
+      // Add more networks based on fusion level
+      const additionalNetworks = Math.min(
+        availableNetworks.length - 1, 
+        demoFusionLevel * 2 - 1
+      );
+      
+      for (let i = 0; i < additionalNetworks; i++) {
+        if (i + 1 < availableNetworks.length) {
+          activeNetworks.push(availableNetworks[i + 1]);
+        }
+      }
+      
+      // Load territories and connections
+      const territories = AtlasModuleLoader.loadTerritories(
+        tokenId,
+        activeNetworks,
+        demoFusionLevel
+      );
+      
+      const connections = AtlasModuleLoader.loadConnections(
+        territories,
+        DEFAULT_NETWORK_CONNECTIONS
+      );
+      
+      // Prepare result
+      const result = {
+        territories,
+        connections,
+        usingFallback: true,
+        owner: "0xDemoAddress1234567890123456789012345678AbCd",
+        fusionLevel: demoFusionLevel,
+        customName: `Crypto Atlas #${tokenId} (Demo)`
+      };
+      
+      // Cache with shorter TTL since it's demo data
+      CacheService.set(`atlas_data_${tokenId}`, result, 2 * 60 * 1000); // 2 minutes
+      
+      return result;
+    } catch (error) {
+      console.error(`Error loading fallback data for token #${tokenId}:`, error);
+      
+      // Return minimal data if even fallback fails
       return {
-        totalSupply: 0
+        territories: [],
+        connections: [],
+        usingFallback: true,
+        owner: null,
+        fusionLevel: 1,
+        customName: `Crypto Atlas #${tokenId}`
       };
     }
   }
   
   /**
-   * Pré-carrega dados relacionados a um token para acelerar a experiência do usuário
-   * @param tokenId ID do token a pré-carregar
+   * Preload territory activity data
    */
-  public static async preloadTokenData(tokenId: string): Promise<void> {
-    if (!tokenId) return;
-    
-    try {
-      // Verificar se o token existe e pré-carregar
-      const exists = await this.tokenExists(tokenId);
-      if (!exists) return;
-      
-      // Se o token existe, carregar dados básicos em segundo plano
-      setTimeout(async () => {
-        try {
-          // Carregar dados básicos
-          const nftData = await this.getNFTData(tokenId);
+  private static async preloadTerritoryData(
+    tokenId: string,
+    networkIds: string[]
+  ): Promise<void> {
+    // Don't block the UI thread
+    setTimeout(async () => {
+      try {
+        // Load activity data for each territory in parallel
+        await Promise.all(networkIds.map(async (networkId) => {
+          const cacheKey = `territory_data_${tokenId}_${networkId}`;
           
-          // Se temos redes ativas, pré-carregar dados das 2-3 primeiras
-          if (nftData.activeNetworks && nftData.activeNetworks.length > 0) {
-            nftData.activeNetworks.slice(0, 3).forEach(networkId => {
-              setTimeout(() => {
-                this.getTerritoryContractData(tokenId, networkId)
-                  .catch(() => { /* Ignorar erros no pré-carregamento */ });
-              }, 100);
-            });
+          // Skip if already cached
+          if (CacheService.has(cacheKey)) {
+            return;
           }
-        } catch (error) {
-          // Ignorar erros no pré-carregamento
-          console.debug(`Error preloading data for token #${tokenId}:`, error);
-        }
-      }, 10); // Ligeiro atraso para não bloquear a UI
-    } catch (error) {
-      // Ignorar erros no pré-carregamento
-      console.debug(`Error in preloadTokenData for #${tokenId}:`, error);
-    }
+          
+          try {
+            // Get data from contract
+            const data = await NFTService.getTerritoryContractData(tokenId, networkId);
+            
+            // Cache the result
+            CacheService.set(cacheKey, data, 5 * 60 * 1000); // 5 minutes
+          } catch (error) {
+            console.debug(`Error preloading data for ${networkId}:`, error);
+          }
+        }));
+      } catch (error) {
+        // Don't crash if preloading fails
+        console.debug("Error during preloading:", error);
+      }
+    }, 100);
   }
   
   /**
-   * Invalidar cache para um token específico (após uma atualização)
+   * Refresh cached data for a token
    */
-  public static invalidateTokenCache(tokenId: string): void {
-    CacheService.remove(`nft_data_${tokenId}`);
-  }
-  
-  /**
-   * Invalidar cache para um território específico (após uma atualização)
-   */
-  public static invalidateTerritoryCache(tokenId: string, networkId: string): void {
-    CacheService.remove(`territory_data_${tokenId}_${networkId}`);
+  public static invalidateCache(tokenId: string): void {
+    CacheService.remove(`atlas_data_${tokenId}`);
   }
 }

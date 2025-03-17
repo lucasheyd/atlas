@@ -3,32 +3,93 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { SceneManager } from '../core/SceneManager';
 import { Territory } from '../../types/Territory';
 import { NetworkConnection } from '../../types/Network';
+import { ActivityData } from '../../types/ActivityData';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Info, Loader2 } from 'lucide-react';
+import { OptimizedAtlasService } from '@/services/OptimizedAtlasService';
+import { NFTService } from '@/services/NFTService';
+import { TerritoryDataService } from '@/services/TerritoryDataService';
 
 interface AtlasViewerProps {
   tokenId: string;
   territories?: Territory[];
   connections?: NetworkConnection[];
   loading?: boolean;
-  onTerritoryClick?: (territoryId: string) => void;
+  onTerritoryClick?: (territoryId: string, activityData?: ActivityData) => void;
   simplified?: boolean;
   className?: string;
+  // New optimized loading props
+  useOptimizedLoading?: boolean;
 }
 
 const AtlasViewer: React.FC<AtlasViewerProps> = ({
   tokenId,
-  territories = [],
-  connections = [],
-  loading = false,
+  territories: initialTerritories = [],
+  connections: initialConnections = [],
+  loading: initialLoading = false,
   onTerritoryClick,
   simplified = false,
-  className = ''
+  className = '',
+  useOptimizedLoading = false // Default to false for backward compatibility
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [sceneManager, setSceneManager] = useState<SceneManager | null>(null);
   const [selectedTerritory, setSelectedTerritory] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // States for optimized loading
+  const [territories, setTerritories] = useState<Territory[]>(initialTerritories);
+  const [connections, setConnections] = useState<NetworkConnection[]>(initialConnections);
+  const [loading, setLoading] = useState<boolean>(initialLoading);
+  const [usingFallback, setUsingFallback] = useState<boolean>(false);
+  const [territoryData, setTerritoryData] = useState<ActivityData | null>(null);
+  const [territoryLoading, setTerritoryLoading] = useState<boolean>(false);
+  
+  // Load data with optimization if enabled
+  useEffect(() => {
+    if (!useOptimizedLoading || !tokenId) {
+      // If not using optimized loading, use the props directly
+      setTerritories(initialTerritories);
+      setConnections(initialConnections);
+      setLoading(initialLoading);
+      return;
+    }
+    
+    // Otherwise, load data using the optimized service
+    let isMounted = true;
+    
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        // Use optimized service to load data
+        const result = await OptimizedAtlasService.loadOptimizedTerritories(tokenId);
+        
+        // Update state if component is still mounted
+        if (isMounted) {
+          setTerritories(result.territories);
+          setConnections(result.connections);
+          setUsingFallback(result.usingFallback);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error loading Atlas data:", error);
+        
+        if (isMounted) {
+          setError("Failed to load Atlas data. Please try again later.");
+          setLoading(false);
+        }
+      }
+    };
+    
+    loadData();
+    
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    };
+  }, [tokenId, useOptimizedLoading, initialTerritories, initialConnections, initialLoading]);
   
   // Initialize SceneManager
   useEffect(() => {
@@ -43,8 +104,13 @@ const AtlasViewer: React.FC<AtlasViewerProps> = ({
         const territoryId = event.detail.territoryId;
         setSelectedTerritory(territoryId);
         
+        // If optimized loading, fetch territory data
+        if (useOptimizedLoading && tokenId) {
+          loadTerritoryData(territoryId);
+        }
+        
         if (onTerritoryClick) {
-          onTerritoryClick(territoryId);
+          onTerritoryClick(territoryId, territoryData || undefined);
         }
       };
       
@@ -71,7 +137,7 @@ const AtlasViewer: React.FC<AtlasViewerProps> = ({
       console.error('Error initializing SceneManager:', err);
       setError('Failed to initialize 3D viewer. Please try refreshing the page.');
     }
-  }, [onTerritoryClick]);
+  }, [onTerritoryClick, tokenId, territoryData, useOptimizedLoading]);
   
   // Load territories when available
   useEffect(() => {
@@ -104,6 +170,31 @@ const AtlasViewer: React.FC<AtlasViewerProps> = ({
       console.error('Error focusing on territory:', err);
     }
   }, [sceneManager, selectedTerritory]);
+  
+  // Load territory data when selected
+  const loadTerritoryData = async (territoryId: string) => {
+    if (!tokenId || !territoryId) return;
+    
+    setTerritoryLoading(true);
+    
+    try {
+      // Try to get data for this territory
+      const data = await NFTService.getTerritoryContractData(tokenId, territoryId);
+      setTerritoryData(data);
+      
+      // Update the parent component if needed
+      if (onTerritoryClick) {
+        onTerritoryClick(territoryId, data);
+      }
+    } catch (error) {
+      console.error(`Error loading data for territory ${territoryId}:`, error);
+      
+      // Try fallback method or set null data
+      setTerritoryData(null);
+    } finally {
+      setTerritoryLoading(false);
+    }
+  };
   
   // Reset view callback
   const resetView = useCallback(() => {
@@ -157,6 +248,12 @@ const AtlasViewer: React.FC<AtlasViewerProps> = ({
         </div>
       )}
       
+      {usingFallback && (
+        <div className="absolute top-2 left-2 z-20 bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 text-xs px-2 py-1 rounded">
+          Preview Mode
+        </div>
+      )}
+      
       <div 
         ref={containerRef} 
         className="w-full aspect-square rounded-lg overflow-hidden relative"
@@ -193,6 +290,12 @@ const AtlasViewer: React.FC<AtlasViewerProps> = ({
           >
             Explore Full 3D Map
           </a>
+        </div>
+      )}
+      
+      {territoryLoading && (
+        <div className="mt-2 flex justify-center">
+          <Loader2 className="w-5 h-5 animate-spin text-primary" />
         </div>
       )}
     </div>
