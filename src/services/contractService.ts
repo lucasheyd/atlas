@@ -3,8 +3,8 @@ import { ethers } from 'ethers';
 import CryptoAtlasNFTAbi from '../abi/CryptoAtlasNFT.json';
 import TerritoryDataStoreAbi from '../abi/TerritoryDataStore.json';
 
-const CRYPTO_ATLAS_ADDRESS = "YOUR_CONTRACT_ADDRESS";
-const TERRITORY_STORE_ADDRESS = "YOUR_CONTRACT_ADDRESS";
+const CRYPTO_ATLAS_ADDRESS = "0x91B80CcE88B265392e801f2e9C9F4B4994EE66a7";
+const TERRITORY_STORE_ADDRESS = "0xcc3f4Fd23806F9a309355eBcada6c25372ff2B84";
 
 export const getTokenData = async (provider: ethers.providers.Provider, tokenId: string) => {
   const contract = new ethers.Contract(

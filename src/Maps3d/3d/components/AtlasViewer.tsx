@@ -6,7 +6,7 @@ import { NetworkConnection } from '../../types/Network';
 import { ActivityData } from '../../types/ActivityData';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Info, Loader2 } from 'lucide-react';
-import { OptimizedAtlasService } from '@/services/OptimizedAtlasService';
+import { OptimizedAtlasService } from '@/services/OptimizedNFTService';
 import { NFTService } from '@/services/NFTService';
 import { TerritoryDataService } from '@/services/TerritoryDataService';
 
@@ -213,7 +213,7 @@ const AtlasViewer: React.FC<AtlasViewerProps> = ({
     const handleResize = () => {
       if (sceneManager) {
         try {
-          sceneManager.handleResize();
+          sceneManager.onWindowResize();
         } catch (err) {
           console.error('Error handling resize:', err);
         }
