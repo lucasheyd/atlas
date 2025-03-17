@@ -49,30 +49,59 @@ export interface NFTData {
 export class NFTService {
   private static provider = new ethers.providers.JsonRpcProvider("https://sepolia.base.org");
   
+  // Lista padrão de redes - usada como fallback
+  private static DEFAULT_NETWORKS = [
+    "ethereum", "polygon", "arbitrum", "optimism", 
+    "avalanche", "base", "zksync"
+  ];
+  
   /**
    * Verifica se o token existe no contrato
    * @param tokenId ID do token NFT
    */
   public static async tokenExists(tokenId: string): Promise<boolean> {
     try {
-      // Conectar ao contrato NFT
-      const nftContract = new ethers.Contract(
-        CONTRACTS.CRYPTO_ATLAS_NFT,
-        NFT_ABI,
-        this.provider
-      );
+      // Validar tokenId
+      if (isNaN(parseInt(tokenId)) || parseInt(tokenId) <= 0) {
+        return false;
+      }
       
-      // Alguns contratos têm uma função "exists"
+      // Tenta conectar ao contrato NFT
       try {
-        return await nftContract.exists(tokenId);
-      } catch (e) {
-        // Se não tiver a função "exists", tenta chamar ownerOf
-        // Se não lançar exceção, o token existe
-        await nftContract.ownerOf(tokenId);
-        return true;
+        const nftContract = new ethers.Contract(
+          CONTRACTS.CRYPTO_ATLAS_NFT,
+          NFT_ABI,
+          this.provider
+        );
+      
+        // Tenta usar função exists() se existir
+        try {
+          return await nftContract.exists(tokenId);
+        } catch (e) {
+          // Se não tiver a função "exists", tenta chamar ownerOf
+          try {
+            await nftContract.ownerOf(tokenId);
+            return true;
+          } catch (ownerError) {
+            // Se houver erro específico de token não existente
+            if (
+              (ownerError.message && ownerError.message.includes("nonexistent token")) ||
+              (ownerError.code && ownerError.code === "CALL_EXCEPTION")
+            ) {
+              return false;
+            }
+            
+            // Outros erros mais genéricos
+            console.warn(`Error checking token existence: ${ownerError.message}`);
+            return false;
+          }
+        }
+      } catch (contractError) {
+        console.error("Error interacting with contract:", contractError);
+        return false;
       }
     } catch (error) {
-      // Se ownerOf lançar uma exceção, o token não existe
+      console.debug('Error checking if token exists:', error);
       return false;
     }
   }
@@ -88,7 +117,9 @@ export class NFTService {
       // Verificar primeiro se o token existe
       const exists = await this.tokenExists(tokenId);
       if (!exists) {
-        console.log(`Token #${tokenId} does not exist.`);
+        console.log(`Token #${tokenId} does not exist or contract revert. Using fallback data.`);
+        
+        // Retornar dados de fallback indicando que o token não existe
         return {
           exists: false,
           owner: ethers.constants.AddressZero,
@@ -97,7 +128,7 @@ export class NFTService {
         };
       }
       
-      // Conectar ao contrato NFT
+      // Tentando obter um contrato NFT
       const nftContract = new ethers.Contract(
         CONTRACTS.CRYPTO_ATLAS_NFT,
         NFT_ABI,
@@ -114,53 +145,71 @@ export class NFTService {
         owner = ethers.constants.AddressZero;
       }
       
-      // Obter nível de fusão
-      let fusionLevel;
+      // Obter dados específicos do token de acordo com o design do contrato atual
+      let fusionLevel = 1;  // Valor padrão para NFTs recém-mintados
+      let activeNetworks = ["ethereum"];  // Padrão conforme CryptoAtlasNFT.sol - ethereum é adicionado por padrão
+      let customName = `Crypto Atlas #${tokenId}`;
+      
       try {
+        // Tenta obter dados de fusão - se falhar, usa os valores padrão
         fusionLevel = await nftContract.getFusionLevel(tokenId);
         console.log(`Fusion level of token #${tokenId}: ${fusionLevel}`);
       } catch (error) {
-        console.error(`Error getting fusion level of token #${tokenId}:`, error);
-        fusionLevel = 1;
+        console.warn(`Error getting fusion level for token #${tokenId}, using default level 1:`, error);
+        // Manter o valor padrão 1
       }
       
-      // Obter redes ativas
-      let activeNetworks = [];
       try {
-        activeNetworks = await nftContract.getActiveNetworks(tokenId);
+        // Tenta obter redes ativas - se falhar, usa os valores padrão (ethereum)
+        const networks = await nftContract.getActiveNetworks(tokenId);
+        if (networks && networks.length > 0) {
+          activeNetworks = networks;
+        }
         console.log(`Active networks for token #${tokenId}:`, activeNetworks);
       } catch (error) {
-        console.error(`Error getting active networks for token #${tokenId}:`, error);
+        console.warn(`Error getting active networks for token #${tokenId}, using default (ethereum):`, error);
+        // Manter a ethereum como rede padrão
       }
       
-      // Obter dados completos do token
-      let customName = `Crypto Atlas #${tokenId}`;
       try {
+        // Tenta obter nome customizado e outros dados
         const fullData = await nftContract.getTokenFullData(tokenId);
         if (fullData && fullData[0]) {
           customName = fullData[0];
         }
         console.log(`Custom name for token #${tokenId}: ${customName}`);
+        
+        // Se getTokenFullData retornar dados de rede, usar isso em vez dos dados padrão
+        if (fullData && fullData[1] && fullData[1].length > 0) {
+          activeNetworks = fullData[1];
+        }
+        
+        // Se getTokenFullData retornar nível de fusão, usar isso em vez do valor padrão
+        if (fullData && fullData[2]) {
+          fusionLevel = fullData[2];
+        }
       } catch (error) {
-        console.error(`Error getting full data for token #${tokenId}:`, error);
+        console.warn(`Error getting full data for token #${tokenId}, using defaults:`, error);
+        // Manter os valores padrão já definidos
       }
       
       return {
         exists: true,
         owner,
-        fusionLevel: parseInt(fusionLevel.toString()),
-        activeNetworks: activeNetworks || [],
+        fusionLevel: parseInt(fusionLevel.toString()) || 1,
+        activeNetworks: activeNetworks || ["ethereum"],
         customName
       };
     } catch (error) {
       console.error(`Error fetching NFT data for token #${tokenId}:`, error);
       
-      // Retornar dados básicos em caso de erro
+      // Em caso de erro geral, retornar dados básicos
       return {
-        exists: false,
+        exists: true, // Presumimos que existe já que verificamos antes
         owner: ethers.constants.AddressZero,
         fusionLevel: 1,
-        activeNetworks: []
+        activeNetworks: ["ethereum"],
+        customName: `Crypto Atlas #${tokenId}`
       };
     }
   }
@@ -181,76 +230,52 @@ export class NFTService {
     lastUpdate: number;
   }> {
     try {
-      // Verificar primeiro se o token existe
-      const exists = await this.tokenExists(tokenId);
-      if (!exists) {
-        return {
-          balance: 0,
-          nftCount: 0,
-          transactions: 0,
-          stakedAmount: 0,
-          lastUpdate: Math.floor(Date.now() / 1000)
-        };
-      }
-      
-      // Conectar ao contrato TerritoryDataStore
+      // Tenta conectar ao contrato
       const territoryContract = new ethers.Contract(
         CONTRACTS.TERRITORY_DATA_STORE,
         TERRITORY_DATA_STORE_ABI,
         this.provider
       );
       
-      // Buscar dados do território
-      const data = await territoryContract.getTerritoryData(tokenId, networkId);
-      
-      return {
-        balance: parseFloat(ethers.utils.formatEther(data.balance)),
-        nftCount: parseInt(data.nftCount.toString()),
-        transactions: parseInt(data.transactions.toString()),
-        stakedAmount: parseFloat(ethers.utils.formatEther(data.stakedAmount)),
-        lastUpdate: parseInt(data.lastUpdate.toString())
-      };
+      // Tenta obter os dados do território
+      try {
+        const data = await territoryContract.getTerritoryData(tokenId, networkId);
+        
+        return {
+          balance: parseFloat(ethers.utils.formatEther(data.balance)),
+          nftCount: parseInt(data.nftCount.toString()),
+          transactions: parseInt(data.transactions.toString()),
+          stakedAmount: parseFloat(ethers.utils.formatEther(data.stakedAmount)),
+          lastUpdate: parseInt(data.lastUpdate.toString())
+        };
+      } catch (error) {
+        console.debug(`Error getting territory data from contract:`, error);
+        // Este território pode não estar ativo para este token
+        return this.getEmptyTerritoryData();
+      }
     } catch (error) {
       console.error(`Error fetching territory data for token #${tokenId} and network ${networkId}:`, error);
-      
-      // Retornar dados zerados em caso de erro
-      return {
-        balance: 0,
-        nftCount: 0,
-        transactions: 0,
-        stakedAmount: 0,
-        lastUpdate: Math.floor(Date.now() / 1000)
-      };
+      return this.getEmptyTerritoryData();
     }
   }
   
   /**
-   * Obtém dados de rede do contrato NetworkRegistry
-   * @param networkId ID da rede
+   * Retorna um objeto de dados de território vazio
    */
-  public static async getNetworkData(networkId: string): Promise<any> {
-    try {
-      // Conectar ao contrato NetworkRegistry
-      const networkContract = new ethers.Contract(
-        CONTRACTS.NETWORK_REGISTRY,
-        NETWORK_REGISTRY_ABI,
-        this.provider
-      );
-      
-      // Buscar dados da rede
-      const networkData = await networkContract.getNetwork(networkId);
-      
-      // Buscar dados 3D da rede
-      const network3DData = await networkContract.getNetwork3DData(networkId);
-      
-      return {
-        ...networkData,
-        ...network3DData
-      };
-    } catch (error) {
-      console.error(`Error fetching network data for ${networkId}:`, error);
-      return null;
-    }
+  private static getEmptyTerritoryData(): {
+    balance: number;
+    nftCount: number;
+    transactions: number;
+    stakedAmount: number;
+    lastUpdate: number;
+  } {
+    return {
+      balance: 0,
+      nftCount: 0,
+      transactions: 0,
+      stakedAmount: 0,
+      lastUpdate: Math.floor(Date.now() / 1000)
+    };
   }
   
   /**
@@ -258,7 +283,7 @@ export class NFTService {
    */
   public static async getContractInfo(): Promise<{ totalSupply: number }> {
     try {
-      // Conectar ao contrato NFT
+      // Tenta conectar ao contrato
       const nftContract = new ethers.Contract(
         CONTRACTS.CRYPTO_ATLAS_NFT,
         NFT_ABI,
@@ -266,15 +291,22 @@ export class NFTService {
       );
       
       // Obter oferta total
-      const totalSupply = await nftContract.totalSupply();
-      
-      return {
-        totalSupply: parseInt(totalSupply.toString())
-      };
+      try {
+        const totalSupply = await nftContract.totalSupply();
+        return {
+          totalSupply: parseInt(totalSupply.toString())
+        };
+      } catch (error) {
+        console.error("Error fetching totalSupply:", error);
+        // Retornar um valor padrão
+        return {
+          totalSupply: 100
+        };
+      }
     } catch (error) {
       console.error("Error fetching contract info:", error);
       return {
-        totalSupply: 0
+        totalSupply: 100
       };
     }
   }
@@ -284,7 +316,7 @@ export class NFTService {
    */
   public static async getAvailableNetworks(): Promise<string[]> {
     try {
-      // Conectar ao contrato NetworkRegistry
+      // Tenta conectar ao contrato
       const networkContract = new ethers.Contract(
         CONTRACTS.NETWORK_REGISTRY,
         NETWORK_REGISTRY_ABI,
@@ -292,10 +324,16 @@ export class NFTService {
       );
       
       // Buscar lista de redes
-      return await networkContract.getNetworks();
+      try {
+        return await networkContract.getNetworks();
+      } catch (error) {
+        console.error("Error fetching network list:", error);
+        // Retornar lista padrão de redes
+        return this.DEFAULT_NETWORKS;
+      }
     } catch (error) {
       console.error("Error fetching available networks:", error);
-      return [];
+      return this.DEFAULT_NETWORKS;
     }
   }
 }

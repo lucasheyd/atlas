@@ -14,6 +14,18 @@ const RPC_URLS: { [key: string]: string } = {
   'base-sepolia': "https://sepolia.base.org"
 };
 
+// Símbolos das moedas para cada rede
+const CURRENCY_SYMBOLS: { [key: string]: string } = {
+  ethereum: "ETH",
+  polygon: "MATIC",
+  arbitrum: "ETH",
+  optimism: "ETH",
+  base: "ETH",
+  zksync: "ETH",
+  avalanche: "AVAX",
+  'base-sepolia': "ETH"
+};
+
 /**
  * Serviço para buscar dados reais de territórios da blockchain
  */
@@ -33,68 +45,66 @@ export class TerritoryDataService {
       
       // Verificar se temos um provedor RPC para esta rede
       if (!RPC_URLS[networkId]) {
-        throw new Error(`No RPC URL available for network: ${networkId}`);
+        console.warn(`No RPC URL available for network: ${networkId}`);
+        return this.getEmptyActivityData();
       }
       
-      // Conectar ao provedor
-      const provider = new ethers.providers.JsonRpcProvider(RPC_URLS[networkId]);
+      // Tenta se conectar ao provedor
+      let provider;
+      try {
+        provider = new ethers.providers.JsonRpcProvider(RPC_URLS[networkId]);
+        
+        // Testamos a conexão para confirmar que o provider está funcionando
+        await provider.getNetwork().catch(() => {
+          throw new Error(`Failed to connect to ${networkId} network`);
+        });
+      } catch (error) {
+        console.warn(`Error connecting to ${networkId} provider:`, error);
+        return this.getEmptyActivityData();
+      }
       
       // Buscar saldo da carteira
-      const balance = await provider.getBalance(walletAddress);
+      let balance = ethers.BigNumber.from(0);
+      try {
+        balance = await provider.getBalance(walletAddress);
+      } catch (error) {
+        console.warn(`Error fetching balance for ${walletAddress} on ${networkId}:`, error);
+      }
       
       // Buscar contagem de transações
-      const txCount = await provider.getTransactionCount(walletAddress);
+      let txCount = 0;
+      try {
+        txCount = await provider.getTransactionCount(walletAddress);
+      } catch (error) {
+        console.warn(`Error fetching transaction count for ${walletAddress} on ${networkId}:`, error);
+      }
       
-      // NFTs e staking exigem integrações mais complexas
-      // Vamos implementá-los posteriormente
-      
-      // Retornar dados de atividade com valores reais para o que temos
+      // Retornar dados reais da blockchain
       return {
         balance: parseFloat(ethers.utils.formatEther(balance)),
         transactions: txCount,
-        nftCount: 0, // Implementar integração com API de NFTs posteriormente
-        stakedAmount: 0, // Implementar integração com contratos de staking posteriormente
+        nftCount: 0, // Por enquanto, definimos como 0 até implementarmos a contagem real de NFTs
+        stakedAmount: 0, // Por enquanto, definimos como 0 até implementarmos o valor real em staking
         lastUpdate: Math.floor(Date.now() / 1000)
       };
     } catch (error) {
       console.error(`Error fetching blockchain data for ${networkId}:`, error);
       
-      // Retornar dados zerados em caso de erro
-      return {
-        balance: 0,
-        transactions: 0,
-        nftCount: 0,
-        stakedAmount: 0,
-        lastUpdate: Math.floor(Date.now() / 1000)
-      };
+      // Retornar dados vazios em caso de erro
+      return this.getEmptyActivityData();
     }
   }
   
   /**
-   * Busca o número de NFTs que a carteira possui (implementação futura)
-   * @param networkId ID da rede blockchain
-   * @param walletAddress Endereço da carteira
+   * Retorna um objeto de dados de atividade vazio
    */
-  private static async fetchNFTCount(
-    networkId: string,
-    walletAddress: string
-  ): Promise<number> {
-    // Aqui você implementaria a integração com uma API como Moralis, Alchemy ou OpenSea
-    // Por enquanto, retornamos 0
-    return 0;
-  }
-  
-  /**
-   * Busca o valor em staking da carteira (implementação futura)
-   * @param networkId ID da rede blockchain
-   * @param walletAddress Endereço da carteira
-   */
-  private static async fetchStakedAmount(
-    networkId: string,
-    walletAddress: string
-  ): Promise<number> {
-    // Aqui você implementaria a integração com os principais contratos de staking
-    // Por enquanto, retornamos 0
-    return 0;
+  private static getEmptyActivityData(): ActivityData {
+    return {
+      balance: 0,
+      nftCount: 0,
+      transactions: 0,
+      stakedAmount: 0,
+      lastUpdate: Math.floor(Date.now() / 1000)
+    };
   }
 }

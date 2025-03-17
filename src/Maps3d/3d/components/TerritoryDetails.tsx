@@ -11,6 +11,17 @@ import {
   CalendarClock
 } from 'lucide-react';
 
+// Mapeamento de tipos de territórios para símbolos de moeda
+const CURRENCY_SYMBOLS: { [key: string]: string } = {
+  ethereum: "ETH",
+  polygon: "MATIC",
+  arbitrum: "ETH",
+  optimism: "ETH",
+  base: "ETH",
+  zksync: "ETH",
+  avalanche: "AVAX"
+};
+
 interface TerritoryDetailsProps {
   territory: Territory;
   activity?: ActivityData;
@@ -74,7 +85,13 @@ const TerritoryDetails: React.FC<TerritoryDetailsProps> = ({
     }
   };
   
+  // Get currency symbol for the territory
+  const getCurrencySymbol = () => {
+    return CURRENCY_SYMBOLS[territory.id] || "ETH";
+  };
+  
   const categoryInfo = getTerritoryCategoryInfo();
+  const currencySymbol = getCurrencySymbol();
   
   return (
     <Card className={className}>
@@ -93,7 +110,7 @@ const TerritoryDetails: React.FC<TerritoryDetailsProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <DollarSign className="w-4 h-4 mr-2 text-primary" />
-                <span className="text-sm">Balance</span>
+                <span className="text-sm">{currencySymbol} Balance</span>
               </div>
               <span className="font-medium">{activity.balance.toFixed(4)}</span>
             </div>
@@ -119,7 +136,7 @@ const TerritoryDetails: React.FC<TerritoryDetailsProps> = ({
                 <PiggyBank className="w-4 h-4 mr-2 text-primary" />
                 <span className="text-sm">Staked</span>
               </div>
-              <span className="font-medium">{activity.stakedAmount.toFixed(4)}</span>
+              <span className="font-medium">{activity.stakedAmount.toFixed(4)} {currencySymbol}</span>
             </div>
             
             <div className="flex items-center justify-between">
