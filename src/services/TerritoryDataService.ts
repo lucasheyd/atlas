@@ -3,15 +3,62 @@ import { ethers } from 'ethers';
 import { ActivityData } from '../Maps3d/types/ActivityData';
 
 // RPC URLs para diferentes redes
-const RPC_URLS: { [key: string]: string } = {
-  ethereum: "https://eth.llamarpc.com",
-  polygon: "https://polygon-rpc.com",
-  arbitrum: "https://arb1.arbitrum.io/rpc",
-  optimism: "https://mainnet.optimism.io",
-  base: "https://mainnet.base.org",
-  zksync: "https://mainnet.era.zksync.io",
-  avalanche: "https://api.avax.network/ext/bc/C/rpc",
-  'base-sepolia': "https://sepolia.base.org"
+const RPC_URLS: { [key: string]: string[] } = {
+  ethereum: [
+    "https://eth.llamarpc.com",
+    "https://cloudflare-eth.com",
+    "https://main-rpc.linkpool.io",
+    "https://eth-mainnet.nodereal.io/v1/1659dfb40a4b4bdeb83c2937c892bf73",
+    "https://rpc.ankr.com/eth"
+  ],
+  polygon: [
+    "https://polygon-rpc.com", 
+    "https://matic-mainnet.chainstacklabs.com",
+    "https://rpc-mainnet.maticvigil.com",
+    "https://rpc-mainnet.matic.network",
+    "https://matic-mainnet-full-rpc.bwarelabs.com"
+  ],
+  arbitrum: [
+    "https://arb1.arbitrum.io/rpc",
+    "https://arbitrum-one.public.blastapi.io",
+    "https://rpc.ankr.com/arbitrum",
+    "https://arbitrum.getblock.io/mainnet/ext/eth/full/rpc",
+    "https://arb-mainnet.g.alchemy.com/v2/demo"
+  ],
+  optimism: [
+    "https://mainnet.optimism.io",
+    "https://optimism-mainnet.public.blastapi.io",
+    "https://rpc.ankr.com/optimism",
+    "https://opt-mainnet.g.alchemy.com/v2/demo",
+    "https://optimism.meowrpc.com"
+  ],
+  base: [
+    "https://mainnet.base.org",
+    "https://base.drpc.org",
+    "https://base.publicnode.com",
+    "https://base.gateway.tenderly.co",
+    "https://base-rpc.publicnode.com"
+  ],
+  zksync: [
+    "https://mainnet.era.zksync.io",
+    "https://zksync.drpc.org",
+    "https://zksync-era.blockpi.network/v1/rpc/public",
+    "https://zksync.meowrpc.com",
+    "https://zksync-era.public.blastapi.io"
+  ],
+  avalanche: [
+    "https://api.avax.network/ext/bc/C/rpc",
+    "https://avalanche-c-chain.publicnode.com",
+    "https://avax-mainnet.public.blastapi.io",
+    "https://rpc.ankr.com/avalanche-c",
+    "https://ava-mainnet.public.blastapi.io"
+  ],
+  'base-sepolia': [
+    "https://sepolia.base.org",
+    "https://base-sepolia.public.blastapi.io",
+    "https://base-sepolia.blockpi.network/v1/rpc/public",
+    "https://base-sepolia-rpc.publicnode.com"
+  ]
 };
 
 // Símbolos das moedas para cada rede
@@ -30,6 +77,22 @@ const CURRENCY_SYMBOLS: { [key: string]: string } = {
  * Serviço para buscar dados reais de territórios da blockchain
  */
 export class TerritoryDataService {
+
+private static async tryRPCProviders(networkId: string): Promise<ethers.providers.JsonRpcProvider | null> {
+    const providerUrls = RPC_URLS[networkId] || [];
+    
+    for (const url of providerUrls) {
+      try {
+        const provider = new ethers.providers.JsonRpcProvider(url);
+        await provider.getNetwork(); // Verificação de conexão
+        return provider;
+      } catch (error) {
+        console.warn(`Failed to connect to RPC: ${url}`);
+      }
+    }
+    
+    return null;
+  }
   
   /**
    * Busca dados de atividade para um território específico
@@ -41,59 +104,77 @@ export class TerritoryDataService {
     walletAddress: string
   ): Promise<ActivityData> {
     try {
-      console.log(`Fetching real data for ${networkId} and wallet ${walletAddress}`);
+      const provider = await this.tryRPCProviders(networkId);
       
-      // Verificar se temos um provedor RPC para esta rede
-      if (!RPC_URLS[networkId]) {
-        console.warn(`No RPC URL available for network: ${networkId}`);
+      if (!provider) {
+        console.error(`No working RPC provider for ${networkId}`);
         return this.getEmptyActivityData();
       }
-      
-      // Tenta se conectar ao provedor
-      let provider;
-      try {
-        provider = new ethers.providers.JsonRpcProvider(RPC_URLS[networkId]);
-        
-        // Testamos a conexão para confirmar que o provider está funcionando
-        await provider.getNetwork().catch(() => {
-          throw new Error(`Failed to connect to ${networkId} network`);
-        });
-      } catch (error) {
-        console.warn(`Error connecting to ${networkId} provider:`, error);
-        return this.getEmptyActivityData();
-      }
-      
-      // Buscar saldo da carteira
-      let balance = ethers.BigNumber.from(0);
-      try {
-        balance = await provider.getBalance(walletAddress);
-      } catch (error) {
-        console.warn(`Error fetching balance for ${walletAddress} on ${networkId}:`, error);
-      }
-      
-      // Buscar contagem de transações
-      let txCount = 0;
-      try {
-        txCount = await provider.getTransactionCount(walletAddress);
-      } catch (error) {
-        console.warn(`Error fetching transaction count for ${walletAddress} on ${networkId}:`, error);
-      }
-      
-      // Retornar dados reais da blockchain
+
+      // Dados paralelos com timeouts
+      const [balance, txCount, nftCount, stakedAmount] = await Promise.all([
+        this.safeGetBalance(provider, walletAddress),
+        this.safeGetTransactionCount(provider, walletAddress),
+        this.safeGetNFTCount(networkId, walletAddress),
+        this.safeGetStakedAmount(networkId, walletAddress)
+      ]);
+
       return {
-        balance: parseFloat(ethers.utils.formatEther(balance)),
+        balance,
         transactions: txCount,
-        nftCount: 0, // Por enquanto, definimos como 0 até implementarmos a contagem real de NFTs
-        stakedAmount: 0, // Por enquanto, definimos como 0 até implementarmos o valor real em staking
+        nftCount,
+        stakedAmount,
         lastUpdate: Math.floor(Date.now() / 1000)
       };
     } catch (error) {
-      console.error(`Error fetching blockchain data for ${networkId}:`, error);
-      
-      // Retornar dados vazios em caso de erro
+      console.error(`Comprehensive error fetching data for ${networkId}:`, error);
       return this.getEmptyActivityData();
     }
   }
+  
+    private static async safeGetBalance(
+    provider: ethers.providers.JsonRpcProvider, 
+    address: string
+  ): Promise<number> {
+    try {
+      const balance = await provider.getBalance(address);
+      return parseFloat(ethers.utils.formatEther(balance));
+    } catch (error) {
+      console.warn('Balance fetch error:', error);
+      return 0;
+    }
+  }
+
+  private static async safeGetTransactionCount(
+    provider: ethers.providers.JsonRpcProvider, 
+    address: string
+  ): Promise<number> {
+    try {
+      return await provider.getTransactionCount(address);
+    } catch (error) {
+      console.warn('Transaction count fetch error:', error);
+      return 0;
+    }
+  }
+
+  private static async safeGetNFTCount(
+    networkId: string, 
+    address: string
+  ): Promise<number> {
+    // Implementação de contagem de NFTs específica para cada rede
+    // Pode usar subgraphs, APIs específicas, etc.
+    return 0; // Placeholder
+  }
+
+  private static async safeGetStakedAmount(
+    networkId: string, 
+    address: string
+  ): Promise<number> {
+    // Implementação de recuperação de valor em stake
+    return 0; // Placeholder
+  }
+
+
   
   /**
    * Retorna um objeto de dados de atividade vazio

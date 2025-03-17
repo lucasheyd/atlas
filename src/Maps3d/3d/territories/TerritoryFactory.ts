@@ -70,28 +70,24 @@ export class TerritoryFactory {
 
     const networkId = territoryData?.id || 'unknown';
     
-    // Check if already loaded
-    if (this.loadedTerritories.has(networkId) && !options.forceRecreate) {
-      console.log(`Territory ${networkId} already loaded, returning existing instance`);
-      return this.loadedTerritories.get(networkId);
-    }
+    // Verificação de carregamento prévia removida para garantir sempre nova renderização
     
-    // Create random number generator with seed from visual seed
+    // Criar random number generator com seed
     const seed = territoryData?.visualSeed || Math.floor(Math.random() * 1000000);
     const random = new PRNG(seed);
     
-    // Create main container for the territory
+    // Criar container principal para o território
     const territory = new Group();
     territory.name = `territory-${networkId}`;
     
-    // Generate color scheme - using robust function that handles missing palette
+    // Gerar esquema de cores
     const colorScheme = generateColorScheme(territoryData, random);
     console.log("Generated color scheme:", colorScheme);
     
-    // Use the appropriate renderer based on territory type
+    // Criar mesh do território
     let territoryMesh;
     
-    // Import the needed renderers
+    // Importar renderizadores
     const MainlandRenderer = require('./MainlandRenderer').MainlandRenderer;
     const IslandRenderer = require('./IslandRenderer').IslandRenderer;
     const PeninsulaRenderer = require('./PeninsulaRenderer').PeninsulaRenderer;
@@ -100,7 +96,7 @@ export class TerritoryFactory {
     const DesertRenderer = require('./DesertRenderer').DesertRenderer;
     const ForestRenderer = require('./ForestRenderer').ForestRenderer;
 
-    // Definir posição do território antes de adicionar o mesh
+    // Definir posição do território
     if (territoryData?.position) {
       console.log("Setting territory position:", territoryData.position);
       territory.position.set(
@@ -110,7 +106,7 @@ export class TerritoryFactory {
       );
     }
     
-    // Create renderer based on territory type
+    // Criar renderer baseado no tipo de território
     switch (territoryData.type) {
       case 'mainland':
         territoryMesh = new MainlandRenderer().createMesh(territoryData, colorScheme);
@@ -134,19 +130,72 @@ export class TerritoryFactory {
         territoryMesh = new ForestRenderer().createMesh(territoryData, colorScheme);
         break;
       default:
-        // Fallback to mainland if type is unknown
         territoryMesh = new MainlandRenderer().createMesh(territoryData, colorScheme);
     }
     
-    // Add the territory mesh to the group
+    // Adicionar mesh ao território
     territory.add(territoryMesh);
     
-    // Rest of your code for applying position, etc.
+    // ETAPA CRÍTICA: Adicionar elementos naturais e ornamentos
+    this.addNaturalElements(territory, territoryData, random);
+    this.addActivityBasedElements(territory, territoryData, colorScheme, random);
+    this.addFusionEffects(territory, territoryData.fusionLevel || 1, colorScheme, random);
+    
+    // Adicionar ornamentos personalizados
+    this.addCustomOrnaments(territory, territoryData, colorScheme, random);
     
     return territory;
   } catch (error) {
     console.error("Error creating territory:", error);
-    // Your fallback code here
+    return null;
+  }
+}
+
+// Novo método para adicionar ornamentos personalizados
+private addCustomOrnaments(
+  territory: Object3D, 
+  territoryData: any, 
+  colorScheme: any, 
+  random: PRNG
+): void {
+  try {
+    // Importar OrnamentFactory
+    const OrnamentFactory = require('../ornaments/OrnamentFactory').OrnamentFactory;
+    const ornamentFactory = new OrnamentFactory();
+
+    // Configuração padrão de ornamentos
+    const defaultOrnaments = {
+      buildingCount: Math.max(1, Math.floor(random.next() * 5)),
+      treeCount: Math.max(3, Math.floor(random.next() * 10)),
+      treasureCount: Math.max(0, Math.floor(random.next() * 3)),
+      mountainCount: territoryData.type === 'mountains' ? 2 : 0,
+      lakeCount: ['island', 'forest'].includes(territoryData.type) ? 1 : 0,
+      pathCount: 1,
+      specialStructures: "[]",
+      animations: "[]"
+    };
+
+    // Dados de atividade padrão
+    const activityData = {
+      balance: random.next() * 10,
+      nftCount: Math.floor(random.next() * 20),
+      transactions: Math.floor(random.next() * 100),
+      stakedAmount: random.next() * 5,
+      lastUpdate: Math.floor(Date.now() / 1000)
+    };
+
+    // Adicionar ornamentos ao território
+    ornamentFactory.addOrnaments(
+      territory,  // Grupo do território
+      defaultOrnaments,  // Configuração de ornamentos
+      activityData,  // Dados de atividade
+      territoryData,  // Dados do território
+      colorScheme  // Esquema de cores
+    );
+
+    console.log(`Added custom ornaments to ${territoryData.type} territory`);
+  } catch (error) {
+    console.error("Error adding custom ornaments:", error);
   }
 }
   
