@@ -4,6 +4,7 @@
 import { Territory, TerritoryType } from './types/Territory';
 import { NetworkConnection } from './types/Network';
 import { DEFAULT_NETWORKS, DEFAULT_NETWORK_VISUAL_DATA } from './data/DefaultNetworks';
+import { TerritoryColorService } from '../services/TerritoryColorService';
 
 /**
  * Classe para gerenciar o carregamento de módulos do Atlas
@@ -17,40 +18,79 @@ export class AtlasModuleLoader {
    * @param fusionLevel Nível de fusão do NFT
    */
   public static loadTerritories(
+  tokenId: string, 
+  activeNetworks: string[] = [], 
+  fusionLevel: number = 1
+): Territory[] {
+  // Limitar o número de redes com base no nível de fusão
+  const networksToLoad = activeNetworks.length > 0 
+    ? activeNetworks.slice(0, fusionLevel * 2)
+    : Object.keys(DEFAULT_NETWORKS).slice(0, fusionLevel * 2);
+
+  console.log('Loading territories', {
+    tokenId,
+    activeNetworks,
+    fusionLevel,
+    networksToLoad
+  });
+
+ 
+  return networksToLoad.map(networkId => {
+    const network = DEFAULT_NETWORKS[networkId];
+    
+    // Gerar seed visual consistente
+    const visualSeed = this.generateSeed(parseInt(tokenId), networkId);
+
+   const colorGenetics = TerritoryColorService.generateInitialColorGenetics(tokenId, networkId);
+   const colorScheme = TerritoryColorService.generateColorSchemeFromGenetics(colorGenetics);
+    
+    return {
+      id: networkId,
+      name: network.name,
+      type: network.type as TerritoryType,
+      position: [
+        network.positionX, 
+        0, 
+        DEFAULT_NETWORK_VISUAL_DATA[networkId]?.positionZ || 0
+      ],
+      color: network.color,
+      borderColor: network.borderColor,
+      size: DEFAULT_NETWORK_VISUAL_DATA[networkId]?.size / 10 || 1,
+      rotation: 0,
+      visualSeed,
+      fusionLevel: fusionLevel,
+      colorPalette: visualSeed % 6,
+      shapeVariant: Math.floor(visualSeed / 6) % 4,
+      rareTraits: 0,
+      primaryColor: colorScheme.primary,
+     secondaryColor: colorScheme.secondary,
+     accentColor: colorScheme.accent,
+     outlineColor: colorScheme.outline,
+     colorGenetics: JSON.stringify(colorGenetics) // Para armazenar no tokenURI
+    };
+  });
+}
+  
+  public static loadTerritories(
     tokenId: string, 
     activeNetworks: string[] = [], 
     fusionLevel: number = 1
   ): Territory[] {
-    // Se não foram especificadas redes ativas, 
-    // assumimos que são todas (para modo de demonstração)
     const networksToLoad = activeNetworks.length > 0 
-      ? activeNetworks 
-      : Object.keys(DEFAULT_NETWORKS);
-    
-    console.log(`Loading ${networksToLoad.length} territories for token #${tokenId}`);
-    
-    // Validar que não excede o limite de fusão
-    if (networksToLoad.length > fusionLevel * 2) {
-      console.warn(`Token #${tokenId} has more networks (${networksToLoad.length}) than its fusion level (${fusionLevel}) allows. Some networks may not display correctly.`);
-    }
-    
-    const territories: Territory[] = [];
-    
-    // Carregar cada rede validada
-    networksToLoad.forEach(networkId => {
-      // Verificar se a rede existe no registro
-      if (!DEFAULT_NETWORKS[networkId]) {
-        console.warn(`Network ${networkId} not found in network registry`);
-        return;
-      }
-      
+      ? activeNetworks.slice(0, fusionLevel * 2)
+      : Object.keys(DEFAULT_NETWORKS).slice(0, fusionLevel * 2);
+
+    return networksToLoad.map(networkId => {
       const network = DEFAULT_NETWORKS[networkId];
       
       // Gerar seed visual consistente
       const visualSeed = this.generateSeed(parseInt(tokenId), networkId);
       
-      // Criar objeto Territory para a rede
-      territories.push({
+      // Gerar cores genéticas
+      const colorGenetics = TerritoryColorService.generateInitialColorGenetics(tokenId, networkId);
+      const colorScheme = TerritoryColorService.generateColorSchemeFromGenetics(colorGenetics);
+      
+      return {
         id: networkId,
         name: network.name,
         type: network.type as TerritoryType,
@@ -67,13 +107,15 @@ export class AtlasModuleLoader {
         fusionLevel: fusionLevel,
         colorPalette: visualSeed % 6,
         shapeVariant: Math.floor(visualSeed / 6) % 4,
-        rareTraits: 0
-      });
+        rareTraits: 0,
+        primaryColor: colorScheme.primary,
+        secondaryColor: colorScheme.secondary,
+        accentColor: colorScheme.accent,
+        outlineColor: colorScheme.outline
+      };
     });
-    
-    return territories;
   }
-  
+
   /**
    * Carrega as conexões relevantes para os territórios ativos
    * @param territories Lista de territórios ativos

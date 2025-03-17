@@ -123,70 +123,82 @@ export class TerritoryFactory {
   /**
    * Gera uma configuração de ornamentos com base no território
    */
-  private generateOrnamentConfig(
-    territory: Territory,
-    random: RandomGenerator
-  ): any {
-    // Base de ornamentos - mesmo para nível 1
-    let baseOrnaments = {
-      buildingCount: 0,
-      treasureCount: 0,
-      pathCount: 0,
-      mountainCount: 0,
-      treeCount: 0,
-      specialStructures: "[]",
-      animations: "[]"
-    };
+  private generateOrnamentConfig(territory: Territory, random: RandomGenerator): any {
+  let baseOrnaments = {
+    buildingCount: 0,
+    treasureCount: 0,
+    pathCount: 0,
+    mountainCount: 0,
+    treeCount: 0,
+    lakeCount: 0,
+    bridgeCount: 0,
+    specialStructures: "[]",
+    animations: "[]"
+  };
+  
+  switch (territory.type) {
+    case TerritoryType.MAINLAND:
+      baseOrnaments.buildingCount = 3 + Math.floor(random.next() * 2);
+      baseOrnaments.pathCount = 2 + Math.floor(random.next() * 2);
+      baseOrnaments.bridgeCount = 1;
+      break;
     
-    // Ajustar quantidades com base no tipo de território
-    switch (territory.type) {
-      case TerritoryType.MAINLAND:
-        baseOrnaments.buildingCount = 3 + Math.floor(random.next() * 2);
-        baseOrnaments.pathCount = 2 + Math.floor(random.next() * 2);
-        break;
-      case TerritoryType.ISLAND:
-        baseOrnaments.buildingCount = 1 + Math.floor(random.next() * 2);
-        baseOrnaments.treasureCount = 1;
-        break;
-      case TerritoryType.PENINSULA:
-        baseOrnaments.buildingCount = 2 + Math.floor(random.next() * 2);
-        baseOrnaments.pathCount = 1;
-        break;
-      case TerritoryType.MOUNTAINS:
-        baseOrnaments.mountainCount = 2 + Math.floor(random.next() * 2);
-        baseOrnaments.buildingCount = 1;
-        break;
-      case TerritoryType.ARCHIPELAGO:
-        baseOrnaments.treasureCount = 2;
-        baseOrnaments.buildingCount = Math.floor(random.next() * 2);
-        break;
-      case TerritoryType.DESERT:
-        baseOrnaments.buildingCount = 1;
-        baseOrnaments.mountainCount = 1;
-        break;
-      case TerritoryType.FOREST:
-        baseOrnaments.treeCount = 5 + Math.floor(random.next() * 5);
-        baseOrnaments.buildingCount = 1;
-        break;
-    }
+    case TerritoryType.ISLAND:
+      baseOrnaments.buildingCount = 1 + Math.floor(random.next() * 2);
+      baseOrnaments.treasureCount = 1;
+      baseOrnaments.lakeCount = 1;
+      break;
     
-    // Aumentar quantidade de ornamentos com base no nível de fusão
-    if (territory.fusionLevel > 1) {
-      baseOrnaments.buildingCount += (territory.fusionLevel - 1);
-      baseOrnaments.treasureCount += Math.floor((territory.fusionLevel - 1) / 2);
-      baseOrnaments.pathCount += Math.floor((territory.fusionLevel - 1) / 2);
-      baseOrnaments.mountainCount += Math.floor((territory.fusionLevel - 1) / 2);
-      baseOrnaments.treeCount += (territory.fusionLevel - 1) * 2;
-      
-      // Adicionar estruturas especiais para níveis mais altos
-      if (territory.fusionLevel >= 3) {
-        const structure = this.generateSpecialStructure(territory, random);
-        baseOrnaments.specialStructures = JSON.stringify([structure]);
-      }
-    }
+    case TerritoryType.PENINSULA:
+      baseOrnaments.buildingCount = 2 + Math.floor(random.next() * 2);
+      baseOrnaments.pathCount = 1;
+      baseOrnaments.bridgeCount = 1;
+      break;
     
-    return baseOrnaments;
+    case TerritoryType.MOUNTAINS:
+      baseOrnaments.mountainCount = 2 + Math.floor(random.next() * 2);
+      baseOrnaments.buildingCount = 1;
+      baseOrnaments.treeCount = 3;
+      break;
+    
+    case TerritoryType.ARCHIPELAGO:
+      baseOrnaments.treasureCount = 2;
+      baseOrnaments.buildingCount = Math.floor(random.next() * 2);
+      baseOrnaments.lakeCount = 1;
+      break;
+    
+    case TerritoryType.DESERT:
+      baseOrnaments.buildingCount = 1;
+      baseOrnaments.mountainCount = 1;
+      break;
+    
+    case TerritoryType.FOREST:
+      baseOrnaments.treeCount = 5 + Math.floor(random.next() * 5);
+      baseOrnaments.buildingCount = 1;
+      baseOrnaments.lakeCount = 1;
+      baseOrnaments.pathCount = 1;
+      break;
   }
+  
+  // Aumentar quantidade de ornamentos com base no nível de fusão
+  if (territory.fusionLevel > 1) {
+    baseOrnaments.buildingCount += (territory.fusionLevel - 1);
+    baseOrnaments.treasureCount += Math.floor((territory.fusionLevel - 1) / 2);
+    baseOrnaments.pathCount += Math.floor((territory.fusionLevel - 1) / 2);
+    baseOrnaments.mountainCount += Math.floor((territory.fusionLevel - 1) / 2);
+    baseOrnaments.treeCount += (territory.fusionLevel - 1) * 2;
+    baseOrnaments.lakeCount += Math.floor(territory.fusionLevel / 2);
+    baseOrnaments.bridgeCount += Math.floor((territory.fusionLevel - 1) / 2);
+    
+    // Adicionar estruturas especiais para níveis mais altos
+    if (territory.fusionLevel >= 3) {
+      const structure = this.generateSpecialStructure(territory, random);
+      baseOrnaments.specialStructures = JSON.stringify([structure]);
+    }
+  }
+  
+  return baseOrnaments;
+}
   
   /**
    * Gera uma estrutura especial para territórios de nível alto

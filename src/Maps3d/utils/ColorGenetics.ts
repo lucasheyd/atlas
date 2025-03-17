@@ -57,22 +57,26 @@ const COLOR_PALETTES = [
 
 export class ColorGenetics {
   public static generateColorScheme(
-    seed: number,
-    fusionLevel: number, 
-    colorPaletteIndex: number
-  ): ColorScheme {
-    const validPaletteIndex = colorPaletteIndex % COLOR_PALETTES.length;
-    const clampedFusionLevel = Math.min(255, Math.max(0, fusionLevel));
-    
-    const random = new RandomGenerator(seed);
-    const palette = COLOR_PALETTES[validPaletteIndex];
-    
-    const fusionFactor = clampedFusionLevel / 255;
-    const variantIndex = Math.min(3, Math.floor(fusionFactor * 4));
-    
-    const variationFactor = 0.1 * random.next();
-    
-    const primaryColor = palette.primary[variantIndex];
+  seed: number,
+  fusionLevel: number, 
+  colorPaletteIndex: number
+): ColorScheme {
+  // Adicionar um offset único para cada território
+  const territoryOffset = colorPaletteIndex * 1000;
+  const combinedSeed = seed + territoryOffset;
+  
+  const random = new RandomGenerator(combinedSeed);
+  
+  // Escolher paleta aleatoriamente se não especificada
+  const validPaletteIndex = (colorPaletteIndex % COLOR_PALETTES.length + random.next() * 2) % COLOR_PALETTES.length;
+  const palette = COLOR_PALETTES[validPaletteIndex];
+  
+  const fusionFactor = Math.min(1, fusionLevel / 5);
+  const variantIndex = Math.floor(fusionFactor * 3);
+  
+  const variationFactor = 0.2 * random.next();
+  
+  const primaryColor = palette.primary[variantIndex];
     const secondaryColor = palette.secondary[variantIndex];
     const accentColor = palette.accent[variantIndex];
     const outlineColor = palette.outline[variantIndex];

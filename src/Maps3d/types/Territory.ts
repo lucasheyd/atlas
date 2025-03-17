@@ -23,6 +23,10 @@ export interface Territory {
   colorPalette: number;
   shapeVariant: number;
   rareTraits: number;
+  primaryColor: string;    // Cor principal do território
+  secondaryColor: string; // Cor secundária
+  accentColor: string;    // Cor de destaque
+  outlineColor: string;   // Cor de contorno
 }
 
 export interface TerrainFeature {

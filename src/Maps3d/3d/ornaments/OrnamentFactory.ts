@@ -1,9 +1,9 @@
-// src/Maps3d/3d/ornaments/OrnamentFactory.ts (Versão aprimorada)
 import * as THREE from 'three';
 import { BuildingGenerator } from './BuildingGenerator';
 import { TreasureGenerator } from './TreasureGenerator';
 import { PathGenerator } from './PathGenerator';
 import { TerrainFeatures } from './TerrainFeatures';
+import { TreeGenerator } from './TreeGenerator';
 import { Ornaments } from '../../types/Ornament';
 import { Territory } from '../../types/Territory';
 import { ColorScheme } from '../../utils/ColorGenetics';
@@ -14,17 +14,16 @@ export class OrnamentFactory {
   private treasureGenerator: TreasureGenerator;
   private pathGenerator: PathGenerator;
   private terrainFeatures: TerrainFeatures;
-  
+  private treeGenerator: TreeGenerator;
+
   constructor() {
     this.buildingGenerator = new BuildingGenerator();
     this.treasureGenerator = new TreasureGenerator();
     this.pathGenerator = new PathGenerator();
     this.terrainFeatures = new TerrainFeatures();
+    this.treeGenerator = new TreeGenerator();
   }
-  
-  /**
-   * Adiciona ornamentos a um território com base nos dados
-   */
+
   public addOrnaments(
     territoryGroup: THREE.Group,
     ornaments: Ornaments,
@@ -32,19 +31,26 @@ export class OrnamentFactory {
     territory: Territory,
     colors: ColorScheme
   ): void {
-    // Garantir que ornaments não é null ou undefined
-    if (!ornaments) {
-      console.warn('Ornaments configuration is missing for territory:', territory.id);
-      ornaments = this.getDefaultOrnaments(territory);
+    console.log('🌍 Adding Ornaments', {
+      type: territory.type,
+      fusionLevel: territory.fusionLevel,
+      treeCount: ornaments.treeCount,
+      buildingCount: ornaments.buildingCount,
+      treasureCount: ornaments.treasureCount
+    });
+
+    // Se os valores são zero, force alguns
+    if (ornaments.treeCount === 0) {
+      console.warn('🌳 No trees detected, forcing 3 trees');
+      ornaments.treeCount = 3;
     }
-    
-    // Garantir que activity não é null ou undefined
-    if (!activity) {
-      console.warn('Activity data is missing for territory:', territory.id);
-      activity = this.getDefaultActivity(territory);
-    }
-    
-    // Criar um grupo para cada tipo de ornamento para organizá-los
+
+    // Adicione suporte para novos tipos de ornamentos
+    ornaments.lakeCount = ornaments.lakeCount || (territory.type === 'island' || territory.type === 'forest' ? 1 : 0);
+    ornaments.mountainCount = ornaments.mountainCount || (territory.type === 'mountains' ? 2 : 0);
+    ornaments.bridgeCount = ornaments.bridgeCount || (territory.type === 'mainland' || territory.type === 'peninsula' ? 1 : 0);
+
+    // Resto do código de grupos permanece o mesmo
     const buildingsGroup = new THREE.Group();
     buildingsGroup.name = "buildings";
     
@@ -63,7 +69,6 @@ export class OrnamentFactory {
     const specialGroup = new THREE.Group();
     specialGroup.name = "special";
     
-    // Adicionar os grupos ao grupo principal
     territoryGroup.add(buildingsGroup);
     territoryGroup.add(treesGroup);
     territoryGroup.add(featuresGroup);
@@ -71,58 +76,122 @@ export class OrnamentFactory {
     territoryGroup.add(pathsGroup);
     territoryGroup.add(specialGroup);
     
-    // Adicionar árvores
-    this.addTrees(
-      treesGroup,
-      ornaments.treeCount || 0,
-      territory,
-      colors
-    );
+    // Adicione novos métodos de renderização
+    if (ornaments.lakeCount > 0) {
+      this.addLakes(featuresGroup, ornaments.lakeCount, territory, colors);
+    }
+
+    if (ornaments.mountainCount > 0) {
+      this.addMountains(featuresGroup, ornaments.mountainCount, territory, colors);
+    }
+
+    if (ornaments.bridgeCount > 0) {
+      this.addBridges(pathsGroup, ornaments.bridgeCount, territory, colors);
+    }
+
+    // Métodos existentes
+    this.addTrees(treesGroup, ornaments.treeCount, territory, colors);
+    this.addBuildings(buildingsGroup, ornaments.buildingCount, activity.balance, territory, colors);
+    this.addTreasures(treasuresGroup, ornaments.treasureCount, activity.nftCount, territory, colors);
+  }
+  private addLakes(
+    featuresGroup: THREE.Group,
+    count: number,
+    territory: Territory,
+    colors: ColorScheme
+  ): void {
+    const random = new RandomGenerator(territory.visualSeed);
     
-    // Adicionar edifícios
-    this.addBuildings(
-      buildingsGroup,
-      ornaments.buildingCount || 0,
-      activity.balance,
-      territory,
-      colors
-    );
-    
-    // Adicionar tesouros
-    this.addTreasures(
-      treasuresGroup,
-      ornaments.treasureCount || 0,
-      activity.nftCount,
-      territory,
-      colors
-    );
-    
-    // Adicionar caminhos
-    this.addPaths(
-      pathsGroup,
-      ornaments.pathCount || 0,
-      activity.transactions,
-      territory,
-      colors
-    );
-    
-    // Adicionar características de terreno
-    this.addTerrainFeatures(
-      featuresGroup,
-      ornaments.mountainCount || 0,
-      activity.stakedAmount,
-      territory,
-      colors
-    );
-    
-    // Adicionar estruturas especiais
-    if (ornaments.specialStructures && ornaments.specialStructures !== "[]") {
-      this.addSpecialStructures(
-        specialGroup,
-        ornaments.specialStructures,
-        territory,
+    for (let i = 0; i < count; i++) {
+      const lakeSize = territory.size * (0.2 + random.next() * 0.3);
+      const lake = this.terrainFeatures.createFeature(
+        'lake', 
+        lakeSize, 
+        territory.fusionLevel, 
         colors
       );
+      
+      const angle = random.next() * Math.PI * 2;
+      const distance = territory.size * 0.4;
+      
+      lake.position.set(
+        Math.cos(angle) * distance,
+        0,
+        Math.sin(angle) * distance
+      );
+      
+      this.adjustHeightToSurface(lake, territory);
+      featuresGroup.add(lake);
+    }
+  }
+
+  private addMountains(
+    featuresGroup: THREE.Group,
+    count: number,
+    territory: Territory,
+    colors: ColorScheme
+  ): void {
+    const random = new RandomGenerator(territory.visualSeed);
+    
+    for (let i = 0; i < count; i++) {
+      const mountainSize = territory.size * (0.3 + random.next() * 0.4);
+      const mountain = this.terrainFeatures.createFeature(
+        'mountain', 
+        mountainSize, 
+        territory.fusionLevel, 
+        colors
+      );
+      
+      const angle = random.next() * Math.PI * 2;
+      const distance = territory.size * 0.6;
+      
+      mountain.position.set(
+        Math.cos(angle) * distance,
+        0,
+        Math.sin(angle) * distance
+      );
+      
+      this.adjustHeightToSurface(mountain, territory);
+      featuresGroup.add(mountain);
+    }
+  }
+
+  private addBridges(
+    pathsGroup: THREE.Group,
+    count: number,
+    territory: Territory,
+    colors: ColorScheme
+  ): void {
+    const random = new RandomGenerator(territory.visualSeed);
+    
+    for (let i = 0; i < count; i++) {
+      const angle1 = random.next() * Math.PI * 2;
+      const angle2 = angle1 + Math.PI; // Ponte oposta
+      const radius = territory.size * 0.7;
+      
+      const start = new THREE.Vector3(
+        Math.cos(angle1) * radius,
+        0.2,
+        Math.sin(angle1) * radius
+      );
+      
+      const end = new THREE.Vector3(
+        Math.cos(angle2) * radius,
+        0.2,
+        Math.sin(angle2) * radius
+      );
+      
+      this.adjustPointHeightToSurface(start, territory);
+      this.adjustPointHeightToSurface(end, territory);
+      
+      const bridge = this.pathGenerator.createBridge(
+        start, 
+        end, 
+        0.5, 
+        colors
+      );
+      
+      pathsGroup.add(bridge);
     }
   }
   
@@ -352,128 +421,140 @@ export class OrnamentFactory {
    * Adiciona árvores ao território
    */
   private addTrees(
-    treesGroup: THREE.Group,
-    count: number,
-    territory: Territory,
-    colors: ColorScheme
-  ): void {
-    if (count <= 0) return;
+  treesGroup: THREE.Group,
+  count: number,
+  territory: Territory,
+  colors: ColorScheme
+): void {
+  // Garantir mínimo de 3 árvores
+  const safeCount = Math.max(3, count);
+  
+  const random = new RandomGenerator(territory.visualSeed);
+  
+  // Caso o treeGenerator não esteja disponível, usar método de criação manual
+  const createTree = (scale: number, type: string, colors: ColorScheme) => {
+    // Método de fallback para criar uma árvore simples se o treeGenerator falhar
+    const treeGroup = new THREE.Group();
     
-    const random = new RandomGenerator(territory.visualSeed + 3);
+    // Tronco
+    const trunkGeometry = new THREE.CylinderGeometry(
+      0.1 * scale,
+      0.15 * scale,
+      1 * scale,
+      8
+    );
     
-    // Distribuir árvores em diferentes anéis ao redor e dentro do território
-    const innerTree = Math.floor(count * 0.3); // 30% das árvores dentro do território
-    const innerRadius = territory.size * 0.8;
+    const trunkMaterial = new THREE.MeshPhongMaterial({ 
+      color: 0x8B4513,
+      shininess: 20
+    });
     
-    const middleTree = Math.floor(count * 0.4); // 40% das árvores na borda
-    const middleInnerRadius = territory.size * 0.9;
-    const middleOuterRadius = territory.size * 1.1;
+    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+    trunk.position.y = 0.5 * scale;
+    trunk.castShadow = true;
+    trunk.receiveShadow = true;
     
-    const outerTree = count - innerTree - middleTree; // 30% das árvores na área externa
-    const outerInnerRadius = territory.size * 1.2;
-    const outerOuterRadius = territory.size * 1.8;
+    treeGroup.add(trunk);
     
-    // Função para criar e posicionar árvore com raio específico
-    const createAndPositionTree = (radius: number) => {
-      const treeGroup = new THREE.Group();
-      const treeScale = 0.3 + random.next() * 0.4;
-      const treeType = random.next() > 0.5 ? 0 : 1;
-      
-      // Tronco
-      const trunkGeometry = new THREE.CylinderGeometry(
-        0.1 * treeScale,
-        0.15 * treeScale,
-        1 * treeScale,
-        8
-      );
-      
-      const trunkMaterial = new THREE.MeshPhongMaterial({ 
-        color: 0x8B4513,
-        shininess: 20
-      });
-      
-      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-      trunk.position.y = 0.5 * treeScale;
-      trunk.castShadow = true;
-      trunk.receiveShadow = true;
-      
-      treeGroup.add(trunk);
-      
-      // Copa da árvore
-      let treeTop;
-      if (treeType === 0) {
-        // Árvore cônica (conífera)
-        const topGeometry = new THREE.ConeGeometry(
-          0.5 * treeScale,
-          1.5 * treeScale,
-          8
-        );
-        
-        const topMaterial = new THREE.MeshPhongMaterial({
-          color: new THREE.Color(colors.secondary),
-          shininess: 15
-        });
-        
-        treeTop = new THREE.Mesh(topGeometry, topMaterial);
-        treeTop.position.y = (1 + 0.75) * treeScale;
-      } else {
-        // Árvore esférica (frondosa)
-        const topGeometry = new THREE.SphereGeometry(
-          0.6 * treeScale,
-          8,
-          8
-        );
-        
-        const topMaterial = new THREE.MeshPhongMaterial({
-          color: new THREE.Color(colors.secondary),
-          shininess: 15
-        });
-        
-        treeTop = new THREE.Mesh(topGeometry, topMaterial);
-        treeTop.position.y = (1 + 0.6) * treeScale;
-      }
-      
-      treeTop.castShadow = true;
-      treeGroup.add(treeTop);
-      
-      // Posição da árvore
-      const angle = random.next() * Math.PI * 2;
-      treeGroup.position.set(
-        Math.cos(angle) * radius,
-        0, // Será ajustado para a superfície
-        Math.sin(angle) * radius
-      );
-      
-      // Ajustar altura para ficar na superfície
-      this.adjustHeightToSurface(treeGroup, territory);
-      
-      // Pequena rotação aleatória
-      treeGroup.rotation.y = random.next() * Math.PI * 2;
-      
-      return treeGroup;
-    };
+    // Copa da árvore
+    const topGeometry = new THREE.ConeGeometry(
+      0.5 * scale,
+      0.8 * scale,
+      8
+    );
     
-    // Adicionar árvores internas
-    for (let i = 0; i < innerTree; i++) {
-      const radius = random.next() * innerRadius;
-      const tree = createAndPositionTree(radius);
-      treesGroup.add(tree);
+    const topMaterial = new THREE.MeshPhongMaterial({
+      color: new THREE.Color(colors.secondary),
+      shininess: 15
+    });
+    
+    const top = new THREE.Mesh(topGeometry, topMaterial);
+    top.position.y = 1.2 * scale;
+    top.castShadow = true;
+    
+    treeGroup.add(top);
+    
+    return treeGroup;
+  };
+
+  // Função para criar e posicionar árvore com correção de altura
+  const createAndPositionTree = (radius: number, terrainHeight: number) => {
+    const treeScale = 0.3 + random.next() * 0.4;
+    const treeType = random.next() > 0.5 ? 'leafy' : 'conifer';
+    
+    // Tentar usar treeGenerator, caso falhe, usar fallback
+    let tree;
+    try {
+      tree = this.treeGenerator 
+        ? this.treeGenerator.createTree(treeScale, treeType, colors)
+        : createTree(treeScale, treeType, colors);
+    } catch (error) {
+      console.warn('Failed to create tree with TreeGenerator, using fallback', error);
+      tree = createTree(treeScale, treeType, colors);
     }
     
-    // Adicionar árvores na borda
-    for (let i = 0; i < middleTree; i++) {
-      const radius = middleInnerRadius + random.next() * (middleOuterRadius - middleInnerRadius);
-      const tree = createAndPositionTree(radius);
-      treesGroup.add(tree);
-    }
+    // Posicionamento com ajuste de altura
+    const angle = random.next() * Math.PI * 2;
+    tree.position.set(
+      Math.cos(angle) * radius,
+      terrainHeight + (treeScale * 0.5), // Elevar ligeiramente acima do terreno
+      Math.sin(angle) * radius
+    );
     
-    // Adicionar árvores externas
-    for (let i = 0; i < outerTree; i++) {
-      const radius = outerInnerRadius + random.next() * (outerOuterRadius - outerInnerRadius);
-      const tree = createAndPositionTree(radius);
-      treesGroup.add(tree);
+    // Rotação aleatória para variação
+    tree.rotation.y = random.next() * Math.PI * 2;
+    
+    return tree;
+  };
+  
+  // Ajustar altura do terreno baseado no tipo de território
+  const getTerrainHeight = (territory: Territory) => {
+    switch (territory.type) {
+      case 'mountains':
+        return 0.5;
+      case 'forest':
+        return 0.2;
+      case 'island':
+        return 0.1;
+      default:
+        return 0.05;
     }
+  };
+  
+  const terrainHeight = getTerrainHeight(territory);
+  
+  // Distribuir árvores em diferentes regiões
+  const innerTree = Math.floor(safeCount * 0.3);
+  const middleTree = Math.floor(safeCount * 0.4);
+  const outerTree = safeCount - innerTree - middleTree;
+  
+  const innerRadius = territory.size * 0.8;
+  const middleInnerRadius = territory.size * 0.9;
+  const middleOuterRadius = territory.size * 1.1;
+  const outerInnerRadius = territory.size * 1.2;
+  const outerOuterRadius = territory.size * 1.8;
+  
+  // Adicionar árvores internas
+  for (let i = 0; i < innerTree; i++) {
+    const radius = random.next() * innerRadius;
+    const tree = createAndPositionTree(radius, terrainHeight);
+    treesGroup.add(tree);
   }
+  
+  // Adicionar árvores na borda
+  for (let i = 0; i < middleTree; i++) {
+    const radius = middleInnerRadius + random.next() * (middleOuterRadius - middleInnerRadius);
+    const tree = createAndPositionTree(radius, terrainHeight);
+    treesGroup.add(tree);
+  }
+  
+  // Adicionar árvores externas
+  for (let i = 0; i < outerTree; i++) {
+    const radius = outerInnerRadius + random.next() * (outerOuterRadius - outerInnerRadius);
+    const tree = createAndPositionTree(radius, terrainHeight);
+    treesGroup.add(tree);
+  }
+}
   
   /**
    * Adiciona características de terreno
