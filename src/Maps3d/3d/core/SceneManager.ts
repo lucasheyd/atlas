@@ -10,6 +10,7 @@ import { LightingSetup } from './LightingSetup';
 import { OceanRenderer } from '../elements/OceanRenderer';
 import { BorderRenderer } from '../elements/BorderRenderer';
 import { CompassRenderer } from '../elements/CompassRenderer';
+import { OrnamentIntegration } from './OrnamentIntegration';
 
 export class SceneManager {
   private scene: THREE.Scene;
@@ -23,6 +24,7 @@ export class SceneManager {
   private oceanRenderer: OceanRenderer;
   private borderRenderer: BorderRenderer;
   private compassRenderer: CompassRenderer;
+  private ornamentIntegration: OrnamentIntegration;
   
   private territories: Map<string, THREE.Object3D> = new Map();
   private isAnimating: boolean = false;
@@ -37,7 +39,8 @@ export class SceneManager {
     // Initialize scene
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0xf5e9c9);
-    
+    this.ornamentIntegration = new OrnamentIntegration();
+
     // Initialize renderer
     this.renderer = new THREE.WebGLRenderer({ 
       antialias: true,
@@ -49,10 +52,13 @@ export class SceneManager {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(this.renderer.domElement);
     
-    // Initialize main components
+    // Initialize camera controller with the DOM element for direct event handling
     this.cameraController = new CameraController(
-      this.container.clientWidth / this.container.clientHeight
+      container.clientWidth / container.clientHeight,
+      this.renderer.domElement
     );
+    
+    // Other components initialization
     this.lightingSetup = new LightingSetup(this.scene);
     this.interactionManager = new InteractionManager(
       this.cameraController.getCamera(),
@@ -96,6 +102,8 @@ export class SceneManager {
       this.scene.add(territoryObject);
       this.territories.set(territory.id, territoryObject);
       
+      this.ornamentIntegration.addOrnamentsToTerritory(territoryObject, territory);
+
       // Register territory for interaction
       this.interactionManager.register({
         object: territoryObject,
@@ -194,7 +202,7 @@ export class SceneManager {
   /**
    * Update the scene when the window is resized
    */
-  private onWindowResize(): void {
+  public onWindowResize(): void {
     const width = this.container.clientWidth;
     const height = this.container.clientHeight;
     

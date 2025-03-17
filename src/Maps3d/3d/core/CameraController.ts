@@ -3,55 +3,316 @@ import * as THREE from 'three';
 
 export class CameraController {
   private camera: THREE.PerspectiveCamera;
+  private domElement: HTMLElement;
   private target: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
   
-  // Estados da câmera
+  // Rotation controls
   private isRotating: boolean = false;
-  private isPanning: boolean = false;
+  private rotateStart = new THREE.Vector2();
+  private rotateEnd = new THREE.Vector2();
+  private rotateDelta = new THREE.Vector2();
+  private rotateSpeed: number = 1.0;
+  
+  // Zoom controls
   private isZooming: boolean = false;
+  private zoomStart: number = 0;
+  private zoomEnd: number = 0;
+  private zoomDelta: number = 0;
+  private zoomSpeed: number = 1.0;
   
-  // Velocidades de movimento
-  private rotateVelocity: THREE.Vector2 = new THREE.Vector2();
-  private zoomVelocity: number = 0;
-  private panVelocity: THREE.Vector2 = new THREE.Vector2();
+  // Pan controls
+  private isPanning: boolean = false;
+  private panStart = new THREE.Vector2();
+  private panEnd = new THREE.Vector2();
+  private panDelta = new THREE.Vector2();
+  private panSpeed: number = 1.0;
   
-  // Configurações da câmera
-  private dampingFactor: number = 0.92;
+  // Spherical coordinates
+  private spherical = new THREE.Spherical();
+  
+  // Limits
   private minDistance: number = 5;
   private maxDistance: number = 100;
-  private minPolarAngle: number = Math.PI * 0.1; // 18 graus do zênite
-  private maxPolarAngle: number = Math.PI * 0.45; // 81 graus do zênite
+  private minPolarAngle: number = Math.PI * 0.1; // 18 degrees
+  private maxPolarAngle: number = Math.PI * 0.45; // 81 degrees
   
-  // Animação
+  // Animation
   private isAnimating: boolean = false;
-  private animationStartPosition: THREE.Vector3 = new THREE.Vector3();
-  private animationEndPosition: THREE.Vector3 = new THREE.Vector3();
-  private animationStartTarget: THREE.Vector3 = new THREE.Vector3();
-  private animationEndTarget: THREE.Vector3 = new THREE.Vector3();
+  private animationStartPosition = new THREE.Vector3();
+  private animationEndPosition = new THREE.Vector3();
+  private animationStartTarget = new THREE.Vector3();
+  private animationEndTarget = new THREE.Vector3();
   private animationProgress: number = 0;
-  private animationDuration: number = 1000; // ms
+  private animationDuration: number = 800; // ms
   private animationStartTime: number = 0;
   
   /**
-   * Cria um controlador de câmera para navegação 3D
-   * @param aspect Razão de aspecto inicial da câmera
+   * Constructor
+   * @param aspect Aspect ratio for camera
+   * @param domElement Optional DOM element for event binding (defaults to document)
    */
-  constructor(aspect: number) {
-    // Criar câmera
+  constructor(aspect: number, domElement?: HTMLElement) {
+    // Create camera
     this.camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000);
     this.resetToDefault();
+    
+    // Set DOM element
+    this.domElement = domElement || document.body;
+    
+    // Initialize spherical coordinates
+    this.updateSpherical();
+    
+    // Bind event handlers
+    this.bindEvents();
   }
   
   /**
-   * Obtém a câmera
+   * Get the camera instance
    */
   public getCamera(): THREE.PerspectiveCamera {
     return this.camera;
   }
   
   /**
-   * Atualiza a razão de aspecto da câmera
-   * @param aspect Nova razão de aspecto
+   * Bind DOM event listeners
+   */
+  private bindEvents(): void {
+    this.domElement.addEventListener('mousedown', this.onMouseDown.bind(this));
+    this.domElement.addEventListener('wheel', this.onMouseWheel.bind(this), { passive: false });
+    this.domElement.addEventListener('contextmenu', this.onContextMenu.bind(this));
+    
+    // Touch events for mobile
+    this.domElement.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: false });
+    this.domElement.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: false });
+    this.domElement.addEventListener('touchend', this.onTouchEnd.bind(this));
+  }
+  
+  /**
+   * Mouse down event handler
+   */
+  private onMouseDown(event: MouseEvent): void {
+    event.preventDefault();
+    
+    if (event.button === 0) { // Left mouse button
+      this.isRotating = true;
+      this.rotateStart.set(event.clientX, event.clientY);
+    } else if (event.button === 2) { // Right mouse button
+      this.isPanning = true;
+      this.panStart.set(event.clientX, event.clientY);
+    }
+    
+    const onMouseMove = (e: MouseEvent) => {
+      if (this.isRotating) {
+        this.rotateEnd.set(e.clientX, e.clientY);
+        this.rotateDelta.subVectors(this.rotateEnd, this.rotateStart);
+        
+        // Apply rotation
+        const element = this.domElement;
+        this.rotateLeft(2 * Math.PI * this.rotateDelta.x / element.clientWidth * this.rotateSpeed);
+        this.rotateUp(2 * Math.PI * this.rotateDelta.y / element.clientHeight * this.rotateSpeed);
+        
+        this.rotateStart.copy(this.rotateEnd);
+      }
+      
+      if (this.isPanning) {
+        this.panEnd.set(e.clientX, e.clientY);
+        this.panDelta.subVectors(this.panEnd, this.panStart);
+        
+        // Apply pan
+        this.pan(this.panDelta.x, this.panDelta.y);
+        
+        this.panStart.copy(this.panEnd);
+      }
+    };
+    
+    const onMouseUp = () => {
+      this.isRotating = false;
+      this.isPanning = false;
+      
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }
+  
+  /**
+   * Mouse wheel event handler
+   */
+  private onMouseWheel(event: WheelEvent): void {
+    event.preventDefault();
+    
+    this.zoomDelta = event.deltaY * 0.01;
+    this.zoom(this.zoomDelta);
+  }
+  
+  /**
+   * Context menu event handler (prevent right-click menu)
+   */
+  private onContextMenu(event: MouseEvent): void {
+    event.preventDefault();
+  }
+  
+  /**
+   * Touch start event handler
+   */
+  private onTouchStart(event: TouchEvent): void {
+    event.preventDefault();
+    
+    switch (event.touches.length) {
+      case 1: // Single touch: rotate
+        this.isRotating = true;
+        this.rotateStart.set(event.touches[0].pageX, event.touches[0].pageY);
+        break;
+        
+      case 2: // Two finger touch: zoom
+        const dx = event.touches[0].pageX - event.touches[1].pageX;
+        const dy = event.touches[0].pageY - event.touches[1].pageY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        this.isZooming = true;
+        this.zoomStart = distance;
+        break;
+    }
+  }
+  
+  /**
+   * Touch move event handler
+   */
+  private onTouchMove(event: TouchEvent): void {
+    event.preventDefault();
+    
+    switch (event.touches.length) {
+      case 1: // Single touch: rotate
+        if (this.isRotating) {
+          this.rotateEnd.set(event.touches[0].pageX, event.touches[0].pageY);
+          this.rotateDelta.subVectors(this.rotateEnd, this.rotateStart);
+          
+          // Apply rotation
+          const element = this.domElement;
+          this.rotateLeft(2 * Math.PI * this.rotateDelta.x / element.clientWidth * this.rotateSpeed);
+          this.rotateUp(2 * Math.PI * this.rotateDelta.y / element.clientHeight * this.rotateSpeed);
+          
+          this.rotateStart.copy(this.rotateEnd);
+        }
+        break;
+        
+      case 2: // Two finger touch: zoom
+        if (this.isZooming) {
+          const dx = event.touches[0].pageX - event.touches[1].pageX;
+          const dy = event.touches[0].pageY - event.touches[1].pageY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          this.zoomEnd = distance;
+          this.zoomDelta = (this.zoomStart - this.zoomEnd) * 0.01;
+          
+          this.zoom(this.zoomDelta);
+          this.zoomStart = this.zoomEnd;
+        }
+        break;
+    }
+  }
+  
+  /**
+   * Touch end event handler
+   */
+  private onTouchEnd(event: TouchEvent): void {
+    this.isRotating = false;
+    this.isZooming = false;
+    this.isPanning = false;
+  }
+  
+  /**
+   * Rotate left/right around the target
+   * @param angle Rotation angle in radians
+   */
+  private rotateLeft(angle: number): void {
+    this.spherical.theta -= angle;
+    this.updateCamera();
+  }
+  
+  /**
+   * Rotate up/down around the target
+   * @param angle Rotation angle in radians
+   */
+  private rotateUp(angle: number): void {
+    this.spherical.phi = Math.max(
+      this.minPolarAngle,
+      Math.min(this.maxPolarAngle, this.spherical.phi + angle)
+    );
+    this.updateCamera();
+  }
+  
+  /**
+   * Pan the camera
+   * @param deltaX X movement
+   * @param deltaY Y movement
+   */
+  private pan(deltaX: number, deltaY: number): void {
+    const offset = new THREE.Vector3();
+    
+    // Get camera direction vectors
+    const forward = new THREE.Vector3();
+    forward.subVectors(this.camera.position, this.target).normalize();
+    
+    const right = new THREE.Vector3();
+    right.crossVectors(this.camera.up, forward).normalize();
+    
+    const up = new THREE.Vector3();
+    up.crossVectors(forward, right);
+    
+    // Apply pan offsets
+    const speedFactor = this.camera.position.distanceTo(this.target) * 0.001;
+    
+    offset.copy(right).multiplyScalar(-deltaX * this.panSpeed * speedFactor);
+    offset.add(up.multiplyScalar(deltaY * this.panSpeed * speedFactor));
+    
+    this.camera.position.add(offset);
+    this.target.add(offset);
+    
+    this.camera.lookAt(this.target);
+  }
+  
+  /**
+   * Zoom the camera
+   * @param delta Zoom amount
+   */
+  private zoom(delta: number): void {
+    if (delta > 0) {
+      this.spherical.radius = Math.max(this.minDistance, this.spherical.radius - delta * this.spherical.radius * 0.1);
+    } else {
+      this.spherical.radius = Math.min(this.maxDistance, this.spherical.radius - delta * this.spherical.radius * 0.1);
+    }
+    
+    this.updateCamera();
+  }
+  
+  /**
+   * Update spherical coordinates from camera position
+   */
+  private updateSpherical(): void {
+    const offset = new THREE.Vector3();
+    offset.subVectors(this.camera.position, this.target);
+    
+    // Convert to spherical
+    this.spherical.setFromVector3(offset);
+  }
+  
+  /**
+   * Update camera position from spherical coordinates
+   */
+  private updateCamera(): void {
+    const offset = new THREE.Vector3();
+    offset.setFromSpherical(this.spherical);
+    
+    this.camera.position.copy(this.target).add(offset);
+    this.camera.lookAt(this.target);
+  }
+  
+  /**
+   * Update the camera's aspect ratio
+   * @param aspect New aspect ratio
    */
   public updateAspect(aspect: number): void {
     this.camera.aspect = aspect;
@@ -59,221 +320,124 @@ export class CameraController {
   }
   
   /**
-   * Inicia a rotação da câmera
-   * @param velocity Velocidade inicial de rotação
-   */
-  public startRotate(velocity: THREE.Vector2): void {
-    this.isRotating = true;
-    this.rotateVelocity.copy(velocity);
-  }
-  
-  /**
-   * Para a rotação da câmera
-   */
-  public stopRotate(): void {
-    this.isRotating = false;
-  }
-  
-  /**
-   * Aplica velocidade adicional à rotação
-   * @param velocity Velocidade adicional de rotação
-   */
-  public addRotateVelocity(velocity: THREE.Vector2): void {
-    this.rotateVelocity.add(velocity);
-  }
-  
-  /**
-   * Inicia o zoom da câmera
-   * @param velocity Velocidade inicial de zoom
-   */
-  public startZoom(velocity: number): void {
-    this.isZooming = true;
-    this.zoomVelocity = velocity;
-  }
-  
-  /**
-   * Para o zoom da câmera
-   */
-  public stopZoom(): void {
-    this.isZooming = false;
-  }
-  
-  /**
-   * Aplica velocidade adicional ao zoom
-   * @param velocity Velocidade adicional de zoom
-   */
-  public addZoomVelocity(velocity: number): void {
-    this.zoomVelocity += velocity;
-  }
-  
-  /**
-   * Inicia o pan da câmera
-   * @param velocity Velocidade inicial de pan
-   */
-  public startPan(velocity: THREE.Vector2): void {
-    this.isPanning = true;
-    this.panVelocity.copy(velocity);
-  }
-  
-  /**
-   * Para o pan da câmera
-   */
-  public stopPan(): void {
-    this.isPanning = false;
-  }
-  
-  /**
-   * Aplica velocidade adicional ao pan
-   * @param velocity Velocidade adicional de pan
-   */
-  public addPanVelocity(velocity: THREE.Vector2): void {
-    this.panVelocity.add(velocity);
-  }
-  
-  /**
-   * Reseta a câmera para a posição inicial padrão
+   * Reset the camera to default position
    */
   public resetToDefault(): void {
     this.camera.position.set(0, 40, 35);
     this.target.set(0, 0, 0);
     this.camera.lookAt(this.target);
+    this.updateSpherical();
   }
   
   /**
-   * Foca a câmera em um objeto específico
-   * @param position Posição para focar
-   * @param object Objeto para calcular distância apropriada
+   * Focus the camera on a specific object
+   * @param position Position to focus on
+   * @param object Optional object to determine appropriate distance
    */
   public focusOn(position: THREE.Vector3, object?: THREE.Object3D): void {
     this.stopAnimation();
     
-    // Calcular tamanho do objeto se fornecido
-    let objectSize = 10;
+    // Calculate distance based on object size if provided
+    let distance = this.spherical.radius;
     if (object) {
       const box = new THREE.Box3().setFromObject(object);
       const size = new THREE.Vector3();
       box.getSize(size);
-      objectSize = Math.max(size.x, size.y, size.z);
+      distance = Math.max(size.x, size.y, size.z) * 2;
     }
     
-    // Calcular posição da câmera
-    const distance = objectSize * 2;
-    const cameraPosition = new THREE.Vector3(
-      position.x, 
-      position.y + distance * 0.5, 
-      position.z + distance
-    );
+    // Calculate new camera position
+    const targetPosition = position.clone();
+    const direction = new THREE.Vector3().subVectors(this.camera.position, this.target).normalize();
+    const cameraPosition = targetPosition.clone().add(direction.multiplyScalar(distance));
     
-    // Animar para a nova posição
-    this.animateTo(cameraPosition, position);
+    // Animate to new position
+    this.animateTo(cameraPosition, targetPosition);
   }
   
   /**
-   * Ajusta a câmera para mostrar todos os objetos em vista
-   * @param center Centro da vista
-   * @param size Tamanho do volume a ser visualizado
-   */
-  public fitToView(center: THREE.Vector3, size: THREE.Vector3): void {
-    this.stopAnimation();
-    
-    // Calcular tamanho máximo
-    const maxSize = Math.max(size.x, size.y, size.z);
-    
-    // Calcular distância para enquadrar o objeto
-    const fov = this.camera.fov * Math.PI / 180;
-    const distance = maxSize / (2 * Math.tan(fov / 2));
-    
-    // Calcular nova posição da câmera
-    const cameraPosition = new THREE.Vector3(
-      center.x, 
-      center.y + distance * 0.5, 
-      center.z + distance * 1.2
-    );
-    
-    // Animar para a nova posição
-    this.animateTo(cameraPosition, center);
-  }
-  
-  /**
-   * Anima a câmera de sua posição atual para uma nova posição
-   * @param newPosition Nova posição da câmera
-   * @param newTarget Novo alvo da câmera
+   * Animate camera to new position and target
+   * @param newPosition New camera position
+   * @param newTarget New target to look at
    */
   public animateTo(newPosition: THREE.Vector3, newTarget: THREE.Vector3): void {
     this.isAnimating = true;
     
-    // Armazenar posições inicial e final
+    // Store start and end positions
     this.animationStartPosition.copy(this.camera.position);
     this.animationEndPosition.copy(newPosition);
     
     this.animationStartTarget.copy(this.target);
     this.animationEndTarget.copy(newTarget);
     
-    // Inicializar animação
-    this.animationProgress = 0;
+    // Initialize animation
     this.animationStartTime = Date.now();
   }
   
   /**
-   * Para qualquer animação em andamento
+   * Stop current animation
    */
   public stopAnimation(): void {
     this.isAnimating = false;
   }
   
   /**
-   * Atualiza a posição e orientação da câmera
+   * Fit camera view to include all objects
+   * @param center Center point to orbit around
+   * @param size Size of the volume to view
+   */
+  public fitToView(center: THREE.Vector3, size: THREE.Vector3): void {
+    this.stopAnimation();
+    
+    // Calculate maximum dimension
+    const maxDimension = Math.max(size.x, size.y, size.z);
+    
+    // Calculate distance needed to view the entire volume
+    const fov = this.camera.fov * Math.PI / 180;
+    const distance = maxDimension / (2 * Math.tan(fov / 2)) * 1.2; // Add 20% margin
+    
+    // Calculate new camera position
+    const cameraPosition = new THREE.Vector3(
+      center.x,
+      center.y + distance * 0.5,
+      center.z + distance
+    );
+    
+    // Animate to new position
+    this.animateTo(cameraPosition, center);
+  }
+  
+  /**
+   * Update camera position and animation
    */
   public update(): void {
     if (this.isAnimating) {
       this.updateAnimation();
-      return;
     }
-    
-    // Calcular nova posição da câmera a partir das velocidades
-    if (this.isRotating) {
-      this.updateRotation();
-    }
-    
-    if (this.isZooming) {
-      this.updateZoom();
-    }
-    
-    if (this.isPanning) {
-      this.updatePan();
-    }
-    
-    // Aplicar amortecimento às velocidades
-    this.rotateVelocity.multiplyScalar(this.dampingFactor);
-    this.zoomVelocity *= this.dampingFactor;
-    this.panVelocity.multiplyScalar(this.dampingFactor);
-    
-    // Atualizar posição da câmera para olhar para o alvo
-    this.camera.lookAt(this.target);
   }
   
   /**
-   * Atualiza a animação da câmera
+   * Update animation
    */
   private updateAnimation(): void {
     const currentTime = Date.now();
     const elapsed = currentTime - this.animationStartTime;
     
     if (elapsed >= this.animationDuration) {
-      // Animação completa, definir valores finais
+      // Animation complete
       this.camera.position.copy(this.animationEndPosition);
       this.target.copy(this.animationEndTarget);
       this.camera.lookAt(this.target);
-      
+      this.updateSpherical();
       this.isAnimating = false;
       return;
     }
     
-    // Calcular progresso da animação (0 a 1) com easing
+    // Calculate progress with easing
     const t = elapsed / this.animationDuration;
     const easedT = this.easeInOutCubic(t);
     
-    // Interpolar posição e alvo
+    // Interpolate position and target
     this.camera.position.lerpVectors(
       this.animationStartPosition,
       this.animationEndPosition,
@@ -286,12 +450,15 @@ export class CameraController {
       easedT
     );
     
-    // Atualizar câmera
+    // Update camera
     this.camera.lookAt(this.target);
+    this.updateSpherical();
   }
   
   /**
-   * Função de easing cubic in-out
+   * Easing function for smooth animation
+   * @param t Progress from 0 to 1
+   * @returns Eased value
    */
   private easeInOutCubic(t: number): number {
     return t < 0.5 ?
@@ -300,78 +467,14 @@ export class CameraController {
   }
   
   /**
-   * Atualiza a rotação da câmera
+   * Dispose event listeners
    */
-  private updateRotation(): void {
-    // Converter posição para coordenadas esféricas
-    const offset = new THREE.Vector3().subVectors(
-      this.camera.position,
-      this.target
-    );
-    
-    // Obter valores atuais
-    const radius = offset.length();
-    const theta = Math.atan2(offset.x, offset.z); // Longitude
-    const phi = Math.acos(Math.min(Math.max(offset.y / radius, -1), 1)); // Latitude
-    
-    // Aplicar rotação
-    const newTheta = theta + this.rotateVelocity.x * 0.01;
-    const newPhi = Math.max(
-      this.minPolarAngle,
-      Math.min(this.maxPolarAngle, phi + this.rotateVelocity.y * 0.01)
-    );
-    
-    // Converter de volta para coordenadas cartesianas
-    offset.x = radius * Math.sin(newPhi) * Math.sin(newTheta);
-    offset.y = radius * Math.cos(newPhi);
-    offset.z = radius * Math.sin(newPhi) * Math.cos(newTheta);
-    
-    // Atualizar posição da câmera
-    this.camera.position.copy(this.target).add(offset);
-  }
-  
-  /**
-   * Atualiza o zoom da câmera
-   */
-  private updateZoom(): void {
-    // Calcular direção de zoom
-    const zoomDirection = new THREE.Vector3().subVectors(
-      this.camera.position,
-      this.target
-    ).normalize();
-    
-    // Calcular nova distância
-    const currentDistance = this.camera.position.distanceTo(this.target);
-    const newDistance = Math.max(
-      this.minDistance,
-      Math.min(this.maxDistance, currentDistance - this.zoomVelocity)
-    );
-    
-    // Ajustar posição da câmera
-    this.camera.position.copy(this.target).add(
-      zoomDirection.multiplyScalar(newDistance)
-    );
-  }
-  
-  /**
-   * Atualiza o pan da câmera
-   */
-  private updatePan(): void {
-    // Vetores da câmera
-    const right = new THREE.Vector3();
-    const up = new THREE.Vector3();
-    
-    // Obter vetores right e up da câmera
-    right.copy(this.camera.right).normalize();
-    up.copy(this.camera.up).normalize();
-    
-    // Calcular movimento
-    const panOffset = new THREE.Vector3();
-    panOffset.add(right.multiplyScalar(-this.panVelocity.x));
-    panOffset.add(up.multiplyScalar(this.panVelocity.y));
-    
-    // Aplicar movimento à câmera e alvo
-    this.camera.position.add(panOffset);
-    this.target.add(panOffset);
+  public dispose(): void {
+    this.domElement.removeEventListener('mousedown', this.onMouseDown.bind(this));
+    this.domElement.removeEventListener('wheel', this.onMouseWheel.bind(this));
+    this.domElement.removeEventListener('contextmenu', this.onContextMenu.bind(this));
+    this.domElement.removeEventListener('touchstart', this.onTouchStart.bind(this));
+    this.domElement.removeEventListener('touchmove', this.onTouchMove.bind(this));
+    this.domElement.removeEventListener('touchend', this.onTouchEnd.bind(this));
   }
 }

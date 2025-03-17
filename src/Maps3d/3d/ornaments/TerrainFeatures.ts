@@ -1,6 +1,7 @@
-// src/Maps3d/3d/ornaments/TerrainFeatures.ts
+// src/Maps3d/3d/ornaments/TerrainFeatures.ts (versão aprimorada completa)
 import * as THREE from 'three';
 import { ColorScheme } from '../../utils/ColorGenetics';
+import { RandomGenerator } from '../../utils/RandomGenerator';
 
 export class TerrainFeatures {
   /**
@@ -12,27 +13,36 @@ export class TerrainFeatures {
     fusionLevel: number,
     colors: ColorScheme
   ): THREE.Object3D {
+    const random = new RandomGenerator(Math.floor(Math.random() * 100000));
+    
     switch (featureType) {
       case 'mountain':
-        return this.createMountain(size, fusionLevel, colors);
+        return this.createMountain(size, fusionLevel, colors, random);
       case 'lake':
-        return this.createLake(size, fusionLevel, colors);
+        return this.createLake(size, fusionLevel, colors, random);
       case 'rock':
-        return this.createRock(size, fusionLevel, colors);
+        return this.createRock(size, fusionLevel, colors, random);
       case 'hill':
-        return this.createHill(size, fusionLevel, colors);
+        return this.createHill(size, fusionLevel, colors, random);
+      case 'forest-patch':
+        return this.createForestPatch(size, fusionLevel, colors, random);
       default:
-        return this.createRock(size, fusionLevel, colors);
+        return this.createRock(size, fusionLevel, colors, random);
     }
   }
   
   /**
    * Cria uma montanha pequena
    */
-  private createMountain(size: number, fusionLevel: number, colors: ColorScheme): THREE.Object3D {
+  private createMountain(
+    size: number,
+    fusionLevel: number,
+    colors: ColorScheme,
+    random: RandomGenerator
+  ): THREE.Object3D {
     const mountainGroup = new THREE.Group();
     
-    // Geometria da montanha
+    // Geometria da montanha com mais detalhes
     const mountainGeometry = new THREE.ConeGeometry(
       size * 0.8,
       size * 1.5,
@@ -73,17 +83,135 @@ export class TerrainFeatures {
       mountainGroup.add(snowCap);
     }
     
+    // Adicionar rochas na base
+    const rockCount = 3 + fusionLevel;
+    
+    for (let i = 0; i < rockCount; i++) {
+      const rockSize = size * 0.15 * (0.7 + random.next() * 0.6);
+      const rockGeometry = new THREE.DodecahedronGeometry(rockSize, 0);
+      
+      const rockMaterial = new THREE.MeshPhongMaterial({
+        color: 0x777777,
+        shininess: 10,
+        flatShading: true
+      });
+      
+      const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+      
+      // Posicionar em torno da base
+      const rockAngle = (i / rockCount) * Math.PI * 2;
+      const rockRadius = size * 0.6 + random.next() * size * 0.2;
+      
+      rock.position.set(
+        Math.cos(rockAngle) * rockRadius,
+        rockSize,
+        Math.sin(rockAngle) * rockRadius
+      );
+      
+      // Rotação aleatória
+      rock.rotation.set(
+        random.next() * Math.PI,
+        random.next() * Math.PI,
+        random.next() * Math.PI
+      );
+      
+      rock.castShadow = true;
+      rock.receiveShadow = true;
+      
+      mountainGroup.add(rock);
+    }
+    
+    // Para montanhas grandes, adicionar árvores na base
+    if (size > 1.0 && fusionLevel >= 2) {
+      const treeCount = 4 + Math.floor(random.next() * 3);
+      
+      for (let i = 0; i < treeCount; i++) {
+        const treeAngle = random.next() * Math.PI * 2;
+        const treeRadius = size * 0.7 + random.next() * size * 0.3;
+        
+        const treeGroup = new THREE.Group();
+        const treeScale = 0.2 + random.next() * 0.2;
+        
+        // Tronco
+        const trunkGeometry = new THREE.CylinderGeometry(
+          0.07 * treeScale,
+          0.1 * treeScale,
+          0.6 * treeScale,
+          5
+        );
+        
+        const trunkMaterial = new THREE.MeshPhongMaterial({
+          color: 0x8B4513,
+          shininess: 10
+        });
+        
+        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+        trunk.position.y = 0.3 * treeScale;
+        trunk.castShadow = true;
+        
+        // Copa
+        const treeTopGeometry = new THREE.ConeGeometry(
+          0.3 * treeScale,
+          0.8 * treeScale,
+          6
+        );
+        
+        const treeTopMaterial = new THREE.MeshPhongMaterial({
+          color: 0x005000,
+          shininess: 10
+        });
+        
+        const treeTop = new THREE.Mesh(treeTopGeometry, treeTopMaterial);
+        treeTop.position.y = 0.7 * treeScale;
+        treeTop.castShadow = true;
+        
+        treeGroup.add(trunk);
+        treeGroup.add(treeTop);
+        
+        treeGroup.position.set(
+          Math.cos(treeAngle) * treeRadius,
+          0,
+          Math.sin(treeAngle) * treeRadius
+        );
+        
+        mountainGroup.add(treeGroup);
+      }
+    }
+    
     return mountainGroup;
   }
   
   /**
    * Cria um lago
    */
-  private createLake(size: number, fusionLevel: number, colors: ColorScheme): THREE.Object3D {
+  private createLake(
+    size: number,
+    fusionLevel: number,
+    colors: ColorScheme,
+    random: RandomGenerator
+  ): THREE.Object3D {
     const lakeGroup = new THREE.Group();
     
+    // Forma irregular do lago
+    const segments = 12 + fusionLevel * 2;
+    const lakeShape = new THREE.Shape();
+    
+    for (let i = 0; i < segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      const radius = size * (0.8 + random.next() * 0.4);
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      
+      if (i === 0) {
+        lakeShape.moveTo(x, y);
+      } else {
+        lakeShape.lineTo(x, y);
+      }
+    }
+    lakeShape.closePath();
+    
     // Geometria do lago
-    const lakeGeometry = new THREE.CircleGeometry(size, 24);
+    const lakeGeometry = new THREE.ShapeGeometry(lakeShape);
     const lakeMaterial = new THREE.MeshPhongMaterial({
       color: 0x4682B4, // Azul
       transparent: true,
@@ -98,11 +226,40 @@ export class TerrainFeatures {
     lakeGroup.add(lake);
     
     // Adicionar borda do lago
-    const borderGeometry = new THREE.RingGeometry(
-      size * 0.95,
-      size * 1.05,
-      24
-    );
+    const borderShape = new THREE.Shape();
+    
+    for (let i = 0; i < segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      const radius = size * (0.9 + random.next() * 0.4);
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      
+      if (i === 0) {
+        borderShape.moveTo(x, y);
+      } else {
+        borderShape.lineTo(x, y);
+      }
+    }
+    borderShape.closePath();
+    
+    const hole = new THREE.Path();
+    for (let i = 0; i < segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      const radius = size * (0.75 + random.next() * 0.3);
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      
+      if (i === 0) {
+        hole.moveTo(x, y);
+      } else {
+        hole.lineTo(x, y);
+      }
+    }
+    hole.closePath();
+    
+    borderShape.holes.push(hole);
+    
+    const borderGeometry = new THREE.ShapeGeometry(borderShape);
     const borderMaterial = new THREE.MeshPhongMaterial({
       color: new THREE.Color(colors.secondary),
       shininess: 10
@@ -148,6 +305,51 @@ export class TerrainFeatures {
         
         lakeGroup.add(stone);
       }
+      
+      // Para níveis mais altos, adicionar vegetação aquática
+      if (fusionLevel > 2) {
+        const lilyCount = 3 + Math.floor(random.next() * 4);
+        
+        for (let i = 0; i < lilyCount; i++) {
+          const lilyGeometry = new THREE.CircleGeometry(size * 0.15, 5);
+          const lilyMaterial = new THREE.MeshPhongMaterial({
+            color: 0x006400, // Verde escuro
+            transparent: true,
+            opacity: 0.9,
+            shininess: 10
+          });
+          
+          const lily = new THREE.Mesh(lilyGeometry, lilyMaterial);
+          lily.rotation.x = -Math.PI / 2;
+          
+          // Posicionar dentro do lago
+          const angle = random.next() * Math.PI * 2;
+          const radius = size * 0.5 * random.next();
+          
+          lily.position.set(
+            Math.cos(angle) * radius,
+            0.06,
+            Math.sin(angle) * radius
+          );
+          
+          lakeGroup.add(lily);
+          
+          // Adicionar flor em alguns lírios
+          if (random.next() > 0.5) {
+            const flowerGeometry = new THREE.CircleGeometry(size * 0.03, 8);
+            const flowerMaterial = new THREE.MeshPhongMaterial({
+              color: 0xFFFFFF, // Branco
+              shininess: 70
+            });
+            
+            const flower = new THREE.Mesh(flowerGeometry, flowerMaterial);
+            flower.rotation.x = -Math.PI / 2;
+            flower.position.y = 0.01;
+            
+            lily.add(flower);
+          }
+        }
+      }
     }
     
     return lakeGroup;
@@ -156,7 +358,12 @@ export class TerrainFeatures {
   /**
    * Cria uma formação rochosa
    */
-  private createRock(size: number, fusionLevel: number, colors: ColorScheme): THREE.Object3D {
+  private createRock(
+    size: number,
+    fusionLevel: number,
+    colors: ColorScheme,
+    random: RandomGenerator
+  ): THREE.Object3D {
     const rockGroup = new THREE.Group();
     
     // Número de rochas na formação
@@ -164,16 +371,36 @@ export class TerrainFeatures {
     
     for (let i = 0; i < rockCount; i++) {
       // Tamanho variável para cada rocha
-      const rockSize = size * (0.4 + Math.random() * 0.6);
+      const rockSize = size * (0.4 + random.next() * 0.6);
       
-      // Usar geometria de dodecaedro para uma forma mais irregular
-      const rockGeometry = new THREE.DodecahedronGeometry(
-        rockSize,
-        0 // Sem subdivisões para manter baixa poligonagem
+      // Usar geometrias diferentes para mais variedade
+      let rockGeometry;
+      const rockType = Math.floor(random.next() * 4);
+      
+      switch (rockType) {
+        case 0:
+          rockGeometry = new THREE.DodecahedronGeometry(rockSize, 0);
+          break;
+        case 1:
+          rockGeometry = new THREE.OctahedronGeometry(rockSize, 0);
+          break;
+        case 2:
+          rockGeometry = new THREE.TetrahedronGeometry(rockSize, 0);
+          break;
+        default:
+          rockGeometry = new THREE.IcosahedronGeometry(rockSize, 0);
+      }
+      
+      // Cores ligeiramente diferentes para cada rocha
+      const colorVariance = 0.2;
+      const rockColor = new THREE.Color(
+        0.5 + (random.next() - 0.5) * colorVariance,
+        0.5 + (random.next() - 0.5) * colorVariance,
+        0.5 + (random.next() - 0.5) * colorVariance
       );
       
       const rockMaterial = new THREE.MeshPhongMaterial({
-        color: 0x888888, // Cinza
+        color: rockColor,
         specular: 0x111111,
         shininess: 30,
         flatShading: true
@@ -183,23 +410,23 @@ export class TerrainFeatures {
       
       // Posicionar com alguma aleatoriedade
       rock.position.set(
-        (Math.random() - 0.5) * size,
+        (random.next() - 0.5) * size,
         rockSize * 0.5,
-        (Math.random() - 0.5) * size
+        (random.next() - 0.5) * size
       );
       
       // Rotações aleatórias
       rock.rotation.set(
-        Math.random() * Math.PI,
-        Math.random() * Math.PI,
-        Math.random() * Math.PI
+        random.next() * Math.PI,
+        random.next() * Math.PI,
+        random.next() * Math.PI
       );
       
       // Escala variável e não uniforme
       rock.scale.set(
-        1.0 + Math.random() * 0.2,
-        0.7 + Math.random() * 0.3,
-        1.0 + Math.random() * 0.2
+        1.0 + random.next() * 0.2,
+        0.7 + random.next() * 0.3,
+        1.0 + random.next() * 0.2
       );
       
       rock.castShadow = true;
@@ -208,14 +435,52 @@ export class TerrainFeatures {
       rockGroup.add(rock);
     }
     
+    // Adicionar musgo em níveis mais altos
+    if (fusionLevel > 1) {
+      // Adicionar patches de musgo em algumas rochas
+      for (let i = 0; i < rockCount; i += 2) {
+        if (i < rockGroup.children.length) {
+          const rock = rockGroup.children[i] as THREE.Mesh;
+          const rockPosition = rock.position.clone();
+          const rockSize = rock.scale.x;
+          
+          const mossGeometry = new THREE.CircleGeometry(rockSize * 0.7, 8);
+          const mossColor = new THREE.Color(colors.secondary);
+          // Tornar o musgo mais verde
+          mossColor.g += 0.2;
+          
+          const mossMaterial = new THREE.MeshPhongMaterial({
+            color: mossColor,
+            transparent: true,
+            opacity: 0.9,
+            shininess: 5
+          });
+          
+          const moss = new THREE.Mesh(mossGeometry, mossMaterial);
+          moss.rotation.x = -Math.PI / 2;
+          moss.position.set(
+            rockPosition.x,
+            rockPosition.y + rockSize * 0.5,
+            rockPosition.z
+          );
+          
+          rockGroup.add(moss);
+        }
+      }
+    }
+    
     return rockGroup;
   }
   
   /**
    * Cria uma colina
    */
-// src/Maps3d/3d/ornaments/TerrainFeatures.ts (continuação)
-  private createHill(size: number, fusionLevel: number, colors: ColorScheme): THREE.Object3D {
+  private createHill(
+    size: number,
+    fusionLevel: number,
+    colors: ColorScheme,
+    random: RandomGenerator
+  ): THREE.Object3D {
     const hillGroup = new THREE.Group();
     
     // Geometria da colina (hemisfério)
@@ -240,44 +505,243 @@ export class TerrainFeatures {
     
     hillGroup.add(hill);
     
-    // Adicionar vegetação para níveis de fusão maiores
-    if (fusionLevel > 0) {
-      const grassCount = 10 + fusionLevel * 5;
+    // Adicionar vegetação
+    const grassCount = 10 + fusionLevel * 5;
+    
+    // Material para grama
+    const grassMaterial = new THREE.MeshPhongMaterial({
+      color: 0x3CB371, // Verde médio
+      specular: 0x003300,
+      shininess: 5
+    });
+    
+    // Criar vários tufos de grama
+    for (let i = 0; i < grassCount; i++) {
+      // Posição aleatória na colina
+      const theta = random.next() * Math.PI * 2;
+      const phi = random.next() * Math.PI / 4; // Limitado à parte superior da colina
       
-      // Material para grama
-      const grassMaterial = new THREE.MeshPhongMaterial({
-        color: 0x3CB371, // Verde médio
-        specular: 0x003300,
-        shininess: 5
-      });
+      const x = size * Math.sin(phi) * Math.cos(theta);
+      const y = size * Math.cos(phi);
+      const z = size * Math.sin(phi) * Math.sin(theta);
       
-      // Criar vários tufos de grama
-      for (let i = 0; i < grassCount; i++) {
+      // Tufo de grama simples
+      const grassGeometry = new THREE.ConeGeometry(
+        0.1,
+        0.2,
+        4
+      );
+      
+      const grass = new THREE.Mesh(grassGeometry, grassMaterial);
+      grass.position.set(x, y, z);
+      
+      // Apontar para fora da colina
+      grass.lookAt(new THREE.Vector3(x * 2, y * 2, z * 2));
+      
+      hillGroup.add(grass);
+    }
+    
+    // Para níveis de fusão mais altos, adicionar flores
+    if (fusionLevel > 1) {
+      const flowerCount = fusionLevel * 3;
+      
+      for (let i = 0; i < flowerCount; i++) {
         // Posição aleatória na colina
-        const theta = Math.random() * Math.PI * 2;
-        const phi = Math.random() * Math.PI / 4; // Limitado à parte superior da colina
+        const theta = random.next() * Math.PI * 2;
+        const phi = random.next() * Math.PI / 4; // Limitado à parte superior da colina
         
         const x = size * Math.sin(phi) * Math.cos(theta);
         const y = size * Math.cos(phi);
         const z = size * Math.sin(phi) * Math.sin(theta);
         
-        // Tufo de grama simples
-        const grassGeometry = new THREE.ConeGeometry(
-          0.1,
-          0.2,
-          4
-        );
+        // Flor
+        const stemGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.3, 4);
+        const stemMaterial = new THREE.MeshPhongMaterial({
+          color: 0x006400, // Verde escuro
+          shininess: 5
+        });
         
-        const grass = new THREE.Mesh(grassGeometry, grassMaterial);
-        grass.position.set(x, y, z);
+        const stem = new THREE.Mesh(stemGeometry, stemMaterial);
         
-        // Apontar para fora da colina
-        grass.lookAt(new THREE.Vector3(x * 2, y * 2, z * 2));
+        // Pétala
+        const petalGeometry = new THREE.SphereGeometry(0.08, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2);
         
-        hillGroup.add(grass);
+        // Cor aleatória para as flores
+        const colors = [0xFF69B4, 0xFFFACD, 0xFFFFFF, 0x9370DB, 0xFF6347];
+        const petalColor = colors[Math.floor(random.next() * colors.length)];
+        
+        const petalMaterial = new THREE.MeshPhongMaterial({
+          color: petalColor,
+          shininess: 50
+        });
+        
+        const petal = new THREE.Mesh(petalGeometry, petalMaterial);
+        petal.rotation.x = Math.PI;
+        petal.position.y = 0.15;
+        
+        // Grupo para a flor
+        const flower = new THREE.Group();
+        flower.add(stem);
+        flower.add(petal);
+        
+        flower.position.set(x, y, z);
+        flower.lookAt(new THREE.Vector3(x * 2, y * 2, z * 2));
+        
+        hillGroup.add(flower);
       }
     }
     
     return hillGroup;
+  }
+  
+  /**
+   * Cria um pequeno patch de floresta
+   */
+  private createForestPatch(
+    size: number,
+    fusionLevel: number,
+    colors: ColorScheme,
+    random: RandomGenerator
+  ): THREE.Object3D {
+    const forestGroup = new THREE.Group();
+    
+    // Base da floresta (disco verde)
+    const baseGeometry = new THREE.CircleGeometry(size, 16);
+    const baseMaterial = new THREE.MeshPhongMaterial({
+      color: 0x228B22, // Verde floresta
+      shininess: 5
+    });
+    
+    const base = new THREE.Mesh(baseGeometry, baseMaterial);
+    base.rotation.x = -Math.PI / 2;
+    base.position.y = 0.01;
+    base.receiveShadow = true;
+    
+    forestGroup.add(base);
+    
+    // Adicionar árvores
+    const treeCount = 5 + (fusionLevel * 2);
+    
+    for (let i = 0; i < treeCount; i++) {
+      const treeGroup = new THREE.Group();
+      
+      // Posição aleatória dentro do patch
+      const angle = random.next() * Math.PI * 2;
+      const distance = random.next() * size * 0.8;
+      const treeX = Math.cos(angle) * distance;
+      const treeZ = Math.sin(angle) * distance;
+      
+      // Tamanho aleatório
+      const treeScale = 0.2 + random.next() * 0.3;
+      
+      // Tipo de árvore (conífera ou folhosa)
+      const treeType = random.next() > 0.7 ? 'conifer' : 'leafy';
+      
+      // Tronco
+      const trunkGeometry = new THREE.CylinderGeometry(
+        0.1 * treeScale,
+        0.14 * treeScale,
+        0.8 * treeScale,
+        6
+      );
+      
+      const trunkMaterial = new THREE.MeshPhongMaterial({
+        color: 0x8B4513, // Marrom
+        shininess: 15
+      });
+      
+      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+      trunk.position.y = 0.4 * treeScale;
+      trunk.castShadow = true;
+      
+      treeGroup.add(trunk);
+      
+      // Copa da árvore
+      if (treeType === 'conifer') {
+        // Árvore em camadas (pinheiro)
+        for (let l = 0; l < 3; l++) {
+          const coneSize = (3 - l) * 0.25 * treeScale;
+          const coneHeight = 0.5 * treeScale;
+          const coneGeometry = new THREE.ConeGeometry(coneSize, coneHeight, 8);
+          
+          const coneMaterial = new THREE.MeshPhongMaterial({
+            color: new THREE.Color(colors.secondary),
+            shininess: 10
+          });
+          
+          const cone = new THREE.Mesh(coneGeometry, coneMaterial);
+          cone.position.y = 0.5 * treeScale + (l * 0.4 * treeScale);
+          cone.castShadow = true;
+          
+          treeGroup.add(cone);
+        }
+      } else {
+        // Árvore de copa esférica
+        const topGeometry = new THREE.SphereGeometry(
+          0.5 * treeScale,
+          8,
+          8
+        );
+        
+        const topMaterial = new THREE.MeshPhongMaterial({
+          color: new THREE.Color(colors.secondary),
+          shininess: 10
+        });
+        
+        const top = new THREE.Mesh(topGeometry, topMaterial);
+        top.position.y = 0.9 * treeScale;
+        top.castShadow = true;
+        
+        treeGroup.add(top);
+      }
+      
+      // Posicionar a árvore
+      treeGroup.position.set(treeX, 0, treeZ);
+      
+      forestGroup.add(treeGroup);
+    }
+    
+    // Adicionar arbustos para níveis mais altos
+    if (fusionLevel > 1) {
+      const bushCount = 3 + fusionLevel * 2;
+      
+      for (let i = 0; i < bushCount; i++) {
+        const bushGeometry = new THREE.SphereGeometry(
+          0.15 + random.next() * 0.1,
+          8,
+          8
+        );
+        
+        const bushMaterial = new THREE.MeshPhongMaterial({
+          color: new THREE.Color(colors.secondary),
+          shininess: 5
+        });
+        
+        const bush = new THREE.Mesh(bushGeometry, bushMaterial);
+        
+        // Posição aleatória
+        const angle = random.next() * Math.PI * 2;
+        const distance = random.next() * size * 0.9;
+        
+        bush.position.set(
+          Math.cos(angle) * distance,
+          0.15,
+          Math.sin(angle) * distance
+        );
+        
+        // Escala não uniforme para parecer mais natural
+        bush.scale.set(
+          1.0 + random.next() * 0.3,
+          0.8 + random.next() * 0.2,
+          1.0 + random.next() * 0.3
+        );
+        
+        bush.castShadow = true;
+        
+        forestGroup.add(bush);
+      }
+    }
+    
+    return forestGroup;
   }
 }
